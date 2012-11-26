@@ -18,9 +18,9 @@ import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.exception.CheckSumFailException;
-import com.macrohuang.fileq.util.IntByteArrayConverter;
+import com.macrohuang.fileq.util.IntegerBytesConvertUtil;
 
-public class AdvanceileQueueImpl<E> implements FileQueue<E> {
+public class FileLockFileQueueImpl<E> implements FileQueue<E> {
 	    private Config config;
 	    private AtomicInteger objectCount;
 	    private FileChannel fileChannel;
@@ -33,7 +33,7 @@ public class AdvanceileQueueImpl<E> implements FileQueue<E> {
 	    private static final byte magic = (byte) 0xff;
 	    RandomAccessFile randomAccessFile;
 
-	    public AdvanceileQueueImpl() {
+	    public FileLockFileQueueImpl() {
 	        try {
 	            File file = new File("test");
 	            file.deleteOnExit();
@@ -68,8 +68,8 @@ public class AdvanceileQueueImpl<E> implements FileQueue<E> {
 	        byte[] objBytes = codec.encode(e);
 	        byte[] metaBytes = new byte[5];
 	        metaBytes[0] = magic;
-	        System.arraycopy(IntByteArrayConverter.int2ByteArr(objBytes.length), 0, metaBytes, 1, 4);
-	        byte[] checkSum = IntByteArrayConverter.int2ByteArr(META_SIZE + objBytes.length);
+	        System.arraycopy(IntegerBytesConvertUtil.int2ByteArr(objBytes.length), 0, metaBytes, 1, 4);
+	        byte[] checkSum = IntegerBytesConvertUtil.int2ByteArr(META_SIZE + objBytes.length);
 	        long size = metaBytes.length + objBytes.length + checkSum.length;
 	        FileLock writeLock = null;
 	        long position=0;

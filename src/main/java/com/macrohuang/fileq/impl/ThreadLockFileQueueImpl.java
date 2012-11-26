@@ -19,7 +19,7 @@ import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.exception.CheckSumFailException;
-import com.macrohuang.fileq.util.IntByteArrayConverter;
+import com.macrohuang.fileq.util.IntegerBytesConvertUtil;
 
 /**
  * You should always keep this class Singleton in your application, or there will be something damage! To use multion, use {@link com.macrohuang.fileq.MultionFileQueueImpl} instead.
@@ -27,7 +27,7 @@ import com.macrohuang.fileq.util.IntByteArrayConverter;
  *
  * @param <E>
  */
-public class DefaultFileQueueImpl<E> implements FileQueue<E> {
+public class ThreadLockFileQueueImpl<E> implements FileQueue<E> {
     private Config config;
     private AtomicInteger objectCount;
     private FileChannel fileChannel;
@@ -38,12 +38,12 @@ public class DefaultFileQueueImpl<E> implements FileQueue<E> {
     private static final int META_SIZE = 16;
     private static final int CHECKSUM_SIZE = 16;
     private static final int magic =1314520;
-    private static final byte[] LEADING_HEAD=IntByteArrayConverter.int2ByteArr(magic);
+    private static final byte[] LEADING_HEAD=IntegerBytesConvertUtil.int2ByteArr(magic);
     private ReentrantLock writeLock = new ReentrantLock();
     private ReentrantLock readLock = new ReentrantLock();
     RandomAccessFile randomAccessFile;
 
-    public DefaultFileQueueImpl() {
+    public ThreadLockFileQueueImpl() {
         try {
             File file = new File("test");
             file.delete();
@@ -82,10 +82,10 @@ public class DefaultFileQueueImpl<E> implements FileQueue<E> {
         byte[] metaBytes = new byte[META_SIZE];
         Arrays.fill(metaBytes, (byte)0xff);
         System.arraycopy(LEADING_HEAD, 0, metaBytes, 0, 4);
-        System.arraycopy(IntByteArrayConverter.int2ByteArr(objBytes.length), 0, metaBytes, 4, 4);
+        System.arraycopy(IntegerBytesConvertUtil.int2ByteArr(objBytes.length), 0, metaBytes, 4, 4);
         byte[] checkSum = new byte[CHECKSUM_SIZE];
         Arrays.fill(checkSum, (byte)0xff);
-        System.arraycopy(IntByteArrayConverter.int2ByteArr(META_SIZE + objBytes.length), 0, checkSum, 0, IntByteArrayConverter.int2ByteArr(META_SIZE + objBytes.length).length);
+        System.arraycopy(IntegerBytesConvertUtil.int2ByteArr(META_SIZE + objBytes.length), 0, checkSum, 0, IntegerBytesConvertUtil.int2ByteArr(META_SIZE + objBytes.length).length);
         long size = metaBytes.length + objBytes.length + checkSum.length;
         try {
         	writeLock.lock();

@@ -9,7 +9,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.macrohuang.fileq.impl.DefaultFileQueueImpl;
+import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
 
 public class FileQueueTest {
     FileQueue<MyObject> fileQueue;
@@ -19,7 +19,7 @@ public class FileQueueTest {
 
     @Before
     public void init(){
-    	fileQueue = new DefaultFileQueueImpl<MyObject>();
+    	fileQueue = new ThreadLockFileQueueImpl<MyObject>();
     }
     
     @After
