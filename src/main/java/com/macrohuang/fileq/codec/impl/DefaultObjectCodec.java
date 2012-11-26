@@ -18,9 +18,9 @@ import com.macrohuang.fileq.codec.Codec;
  * @author macro
  * 
  */
-public class DefaultJavaObjectCodec<T> implements Codec<T> {
+public class DefaultObjectCodec<T> implements Codec<T> {
      private static final Logger log =
-     LoggerFactory.getLogger(DefaultJavaObjectCodec.class);
+     LoggerFactory.getLogger(DefaultObjectCodec.class);
 	private Class<?> type;
     public byte[] encode(T element) {
     	if (type ==null){

@@ -1,10 +1,12 @@
 package com.macrohuang.fileq.conf;
 
 public class Config {
+	public static final String META_FILE_NAME = ".meta";
 	private int sizePerFile;
 	private boolean backup;
 	private String queueFilePath;
-	private long currentIndex;
+	private String queueFilePrefix;
+	private String queueFileSuffix;
 	public int getSizePerFile() {
 		return sizePerFile;
 	}
@@ -23,10 +25,20 @@ public class Config {
 	public void setQueueFilePath(String queueFilePath) {
 		this.queueFilePath = queueFilePath;
 	}
-	public long getCurrentIndex() {
-		return currentIndex;
+
+	public String getQueueFilePrefix() {
+		return queueFilePrefix;
 	}
-	public void setCurrentIndex(long currentIndex) {
-		this.currentIndex = currentIndex;
+
+	public void setQueueFilePrefix(String queueFilePrefix) {
+		this.queueFilePrefix = queueFilePrefix;
+	}
+
+	public String getQueueFileSuffix() {
+		return queueFileSuffix;
+	}
+
+	public void setQueueFileSuffix(String queueFileSuffix) {
+		this.queueFileSuffix = queueFileSuffix;
 	}
 }

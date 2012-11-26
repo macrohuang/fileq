@@ -10,7 +10,7 @@ import org.junit.Test;
 
 import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
-import com.macrohuang.fileq.codec.impl.DefaultJavaObjectCodec;
+import com.macrohuang.fileq.codec.impl.DefaultObjectCodec;
 
 public class CodecTest {
     private int MAX_OBJS = 10000;
@@ -68,24 +68,24 @@ public class CodecTest {
 
 	@Test
 	public void testDefaultSerializeEncode() {
-		encode(new DefaultJavaObjectCodec<MyObject>());
+		encode(new DefaultObjectCodec<MyObject>());
 	}
 
 	@Test
 	public void testDefaultSerializeDecode() {
-		Codec<MyObject> codec = new DefaultJavaObjectCodec<MyObject>();
+		Codec<MyObject> codec = new DefaultObjectCodec<MyObject>();
 		encode(codec);
 		decode(codec);
 	}
 
 	@Test
 	public void testDefaultSerializeEncodeMultThreads() throws InterruptedException {
-		encodeMultThread(new DefaultJavaObjectCodec<MyObject>());
+		encodeMultThread(new DefaultObjectCodec<MyObject>());
 	}
 
 	@Test
 	public void testDefaultSerializeDecodeMultThreads() throws InterruptedException {
-		final Codec<MyObject> codec = new DefaultJavaObjectCodec<MyObject>();
+		final Codec<MyObject> codec = new DefaultObjectCodec<MyObject>();
 		encode(codec);
 		decodeMultThread(codec);
 	}
