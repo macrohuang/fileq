@@ -1,7 +1,5 @@
 package com.macrohuang.fileq.impl;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -14,7 +12,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.macrohuang.fileq.FileQueue;
 import com.macrohuang.fileq.codec.Codec;
-import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.exception.CheckSumFailException;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
@@ -32,19 +29,8 @@ public class FileLockFileQueueImpl<E> extends AbstractFileQueueImpl<E> implement
 	    private static final byte magic = (byte) 0xff;
 	    RandomAccessFile randomAccessFile;
 
-	    public FileLockFileQueueImpl() {
-	        try {
-	            File file = new File("test");
-	            file.deleteOnExit();
-	            randomAccessFile = new RandomAccessFile(file, "rw");
-	            fileChannel = randomAccessFile.getChannel();
-	            codec = new KryoCodec<E>();
-	            objectCount = new AtomicInteger(0);
-	            writePosition = new AtomicLong(0L);
-	            readPosition = new AtomicLong(0L);
-	        } catch (FileNotFoundException e) {
-	            e.printStackTrace();
-	        }
+	public FileLockFileQueueImpl(Config config) {
+		super(config);
 	    }
 	    @Override
 	    public void add(E e) {

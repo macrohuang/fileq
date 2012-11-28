@@ -2,7 +2,6 @@ package com.macrohuang.fileq.impl;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -17,12 +16,12 @@ import com.macrohuang.fileq.FileQueue;
 import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.conf.Config;
+import com.macrohuang.fileq.util.FileNameUtil;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 
 public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	protected Config config;
 	protected AtomicInteger objectCount;
-	protected FileChannel fileChannel;
 	protected Codec<E> codec;
 	protected AtomicLong writeNumber;
 	protected AtomicLong writePosition;
@@ -40,32 +39,15 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	protected FileChannel writeChannel;
 	private FileChannel metaChannel;
 	private RandomAccessFile metaAccessFile;
-	private static final int SIZE_OF_QUEUE_META = 32;
-
-	protected RandomAccessFile currentProcessFile;
-
-	public AbstractFileQueueImpl() {
-		try {
-			File file = new File("test");
-			file.delete();
-			file.createNewFile();
-			currentProcessFile = new RandomAccessFile(file, "rw");
-			fileChannel = currentProcessFile.getChannel();
-			codec = new KryoCodec<E>();
-			objectCount = new AtomicInteger(0);
-			writeNumber.set(0L);
-			writePosition.set(0L);
-			readNumber.set(0L);
-			readPosition.set(0L);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+	private static final int SIZE_OF_QUEUE_META = 36;
 
 	public AbstractFileQueueImpl(Config config) {
-		this();
+		codec = new KryoCodec<E>();
+		objectCount = new AtomicInteger(0);
+		writeNumber = new AtomicLong(0);
+		readNumber = new AtomicLong(0);
+		writePosition = new AtomicLong(0);
+		readPosition = new AtomicLong(0);
 		this.config = config;
 		init();
 	}
@@ -87,7 +69,18 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 				writePosition.set(queueMetaBuffer.getLong());
 				readNumber.set(queueMetaBuffer.getLong());
 				readPosition.set(queueMetaBuffer.getLong());
+				objectCount.set(queueMetaBuffer.getInt());
 			}
+			File inputFile = new File(FileNameUtil.getFileName(config, readNumber.get()));
+			if (!inputFile.exists())
+				inputFile.createNewFile();
+			readStream = new FileInputStream(inputFile);
+			readChannel = readStream.getChannel();
+			File outputFile = new File(FileNameUtil.getFileName(config, writeNumber.get()));
+			if (!outputFile.exists())
+				outputFile.createNewFile();
+			writeStream = new FileOutputStream(outputFile);
+			writeChannel = writeStream.getChannel();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -159,8 +152,12 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	@Override
 	public void close() {
 		try {
-			currentProcessFile.close();
-			fileChannel.close();
+			metaAccessFile.close();
+			metaChannel.close();
+			readChannel.close();
+			readStream.close();
+			writeChannel.close();
+			writeStream.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

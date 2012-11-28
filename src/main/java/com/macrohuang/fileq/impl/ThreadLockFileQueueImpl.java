@@ -21,9 +21,6 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		implements FileQueue<E> {
 	private final ReentrantLock writeLock = new ReentrantLock();
 	private final ReentrantLock readLock = new ReentrantLock();
-    public ThreadLockFileQueueImpl() {
-		super();
-    }
 
 	public ThreadLockFileQueueImpl(Config config) {
 		super(config);
@@ -42,12 +39,13 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
         long size = metaBytes.length + objBytes.length + checkSum.length;
         try {
         	writeLock.lock();
-            byteBuffer = fileChannel.map(MapMode.READ_WRITE, writePosition.get(), size);
+			byteBuffer = writeChannel.map(MapMode.READ_WRITE, writePosition.get(), size);
             byteBuffer.put(metaBytes);
             byteBuffer.put(objBytes);
             byteBuffer.put(checkSum);
             writePosition.addAndGet(size);
             objectCount.getAndIncrement();
+
         } catch (IOException e1) {
             e1.printStackTrace();
         } finally {
@@ -63,7 +61,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
         	}
             long position = readPosition.get();
             ByteBuffer metaBuffer = ByteBuffer.allocate(META_SIZE);
-            fileChannel.read(metaBuffer, position);
+			readChannel.read(metaBuffer, position);
             metaBuffer.flip();
             if (metaBuffer.getInt()!= magic) {// data error,try to read from the right position.
             	if (!readLock.isHeldByCurrentThread())
@@ -82,7 +80,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
             			}
             		}
             		metaBuffer.clear();
-                    fileChannel.read(metaBuffer, position);
+					readChannel.read(metaBuffer, position);
                     metaBuffer.flip();
                     if (metaBuffer.getInt()==magic){
                     	success=true;
@@ -93,10 +91,10 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
             }
             int objLength = metaBuffer.getInt();
             ByteBuffer objBuffer = ByteBuffer.allocate(objLength);
-            fileChannel.read(objBuffer, position + META_SIZE);
+			readChannel.read(objBuffer, position + META_SIZE);
             E obj = codec.decode(objBuffer.array());
             ByteBuffer checksumBuffer = ByteBuffer.allocate(CHECKSUM_SIZE);
-            fileChannel.read(checksumBuffer, position + META_SIZE + objLength);
+			readChannel.read(checksumBuffer, position + META_SIZE + objLength);
             checksumBuffer.flip();
             if (checksumBuffer.getInt() != META_SIZE + objLength) {// checksum
                 throw new CheckSumFailException();

@@ -9,6 +9,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
 
 public class FileQueueTest {
@@ -19,7 +20,7 @@ public class FileQueueTest {
 
     @Before
     public void init(){
-    	fileQueue = new ThreadLockFileQueueImpl<MyObject>();
+		fileQueue = new ThreadLockFileQueueImpl<MyObject>(new Config());
     }
     
     @After
@@ -53,8 +54,8 @@ public class FileQueueTest {
     @Test
     public void testPeek() {
         fileQueue.add(new MyObject());
-        MyObject myObject = (MyObject) fileQueue.peek();
-        MyObject myObject2 = (MyObject) fileQueue.peek();
+        MyObject myObject = fileQueue.peek();
+        MyObject myObject2 = fileQueue.peek();
         Assert.assertNotNull(myObject);
         Assert.assertNotNull(myObject2);
         org.junit.Assert.assertEquals(myObject, myObject2);
