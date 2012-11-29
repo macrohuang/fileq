@@ -63,4 +63,12 @@ public interface FileQueue<E extends Object> {
      * file queue if its close() method has been called.
      */
     public void close();
+
+	/**
+	 * Delete the file queue, including data file, meat file, queue path.
+	 * 
+	 * @return <code>true</code> if successful deleted, otherwise
+	 *         <code>false</code>
+	 */
+	public boolean delete();
 }

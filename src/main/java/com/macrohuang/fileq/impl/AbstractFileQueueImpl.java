@@ -162,4 +162,22 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 			e.printStackTrace();
 		}
 	}
+
+	public boolean delete(File file) {
+		boolean success = true;
+		if (file.isDirectory()) {
+			for (File file2 : file.listFiles()) {
+				success &= delete(file2);
+			}
+		}
+		success &= file.delete();
+		return success;
+	}
+
+	@Override
+	public boolean delete() {
+		close();
+		return delete(new File(config.getQueueFilePath()));
+	}
+
 }

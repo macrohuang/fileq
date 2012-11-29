@@ -17,7 +17,6 @@ import com.macrohuang.fileq.exception.CheckSumFailException;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 
 public class FileLockFileQueueImpl<E> extends AbstractFileQueueImpl<E> implements FileQueue<E> {
-	    private Config config;
 	    private AtomicInteger objectCount;
 	    private FileChannel fileChannel;
 	    private Codec<E> codec;
