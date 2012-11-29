@@ -25,7 +25,7 @@ public class FileQueueTest {
     
     @After
     public void clean(){
-    	fileQueue.clear();
+		fileQueue.delete();
     }
     @Test
     public void testAdd() {

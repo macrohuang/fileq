@@ -5,7 +5,7 @@ public class Config {
 	public static final String META_FILE_NAME = ".meta";
 	private int sizePerFile = 1024 * 1024 * 100;
 	private boolean backup = false;
-	private String queueFilePath = ".";
+	private String queueFilePath = System.getProperty("java.io.tmpdir", "/temp");
 	private String queueFilePrefix = "fileq_";
 	private String queueFileSuffix = ".data";
 	public int getSizePerFile() {
