@@ -8,6 +8,7 @@ public class Config {
 	private String queueFilePath = System.getProperty("java.io.tmpdir", "/temp");
 	private String queueFilePrefix = "fileq_";
 	private String queueFileSuffix = ".data";
+	private boolean init = false;
 	public int getSizePerFile() {
 		return sizePerFile;
 	}
@@ -41,5 +42,13 @@ public class Config {
 
 	public void setQueueFileSuffix(String queueFileSuffix) {
 		this.queueFileSuffix = queueFileSuffix;
+	}
+
+	public boolean isInit() {
+		return init;
+	}
+
+	public void setInit(boolean init) {
+		this.init = init;
 	}
 }

@@ -5,10 +5,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.Arrays;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.macrohuang.fileq.codec.Codec;
 
@@ -19,10 +15,11 @@ import com.macrohuang.fileq.codec.Codec;
  * 
  */
 public class DefaultObjectCodec<T> implements Codec<T> {
-     private static final Logger log =
-     LoggerFactory.getLogger(DefaultObjectCodec.class);
+	// private static final Logger log =
+	// LoggerFactory.getLogger(DefaultObjectCodec.class);
 	private Class<?> type;
-    public byte[] encode(T element) {
+    @Override
+	public byte[] encode(T element) {
     	if (type ==null){
     		this.type = element.getClass();
     	}
@@ -31,20 +28,21 @@ public class DefaultObjectCodec<T> implements Codec<T> {
             ObjectOutputStream oos = new ObjectOutputStream(bos);
             oos.writeObject(element);
         } catch (IOException e) {
-             log.warn("Encode object({}) fail", element);
+			// log.warn("Encode object({}) fail", element);
             return new byte[0];
         }
         return bos.toByteArray();
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
+	@SuppressWarnings("unchecked")
 	public T decode(byte[] bytes) {
         ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
         try {
             ObjectInputStream ois = new ObjectInputStream(bis);
             return (T) ois.readObject();
         } catch (Exception e) {
-             log.warn("Decode object({}) fail", Arrays.toString(bytes));
+			// log.warn("Decode object({}) fail", Arrays.toString(bytes));
             return null;
         }
     }

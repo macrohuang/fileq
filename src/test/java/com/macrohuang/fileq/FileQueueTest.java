@@ -14,13 +14,17 @@ import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
 
 public class FileQueueTest {
     FileQueue<MyObject> fileQueue;
-    int max = 10000;
+	int max = 10000;
     int threads = 20;
     ExecutorService executorService = Executors.newFixedThreadPool(threads);
 
     @Before
     public void init(){
-		fileQueue = new ThreadLockFileQueueImpl<MyObject>(new Config());
+		Config config = new Config();
+		config.setQueueFilePath("D:\\tmp\\fileq");
+		config.setInit(true);
+		fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
+		fileQueue.clear();
     }
     
     @After
