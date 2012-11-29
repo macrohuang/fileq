@@ -18,25 +18,25 @@ import com.macrohuang.fileq.util.FileNameUtil;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 
 public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
-	protected Config config;
-	protected AtomicInteger objectCount;
+	private Config config;
+	private final AtomicInteger objectCount;
 	protected Codec<E> codec;
-	protected AtomicLong writeNumber;
+	private final AtomicLong writeNumber;
 	protected AtomicLong writePosition;
+	private final AtomicLong readNumber;
 	protected AtomicLong readPosition;
-	protected AtomicLong readNumber;
-	protected MappedByteBuffer mappedByteBuffer;
+	protected MappedByteBuffer writeMappedByteBuffer;
 	protected static final int META_SIZE = 16;
 	protected static final int CHECKSUM_SIZE = 16;
 	protected static final int magic = 1314520;
 	protected static final byte[] LEADING_HEAD = NumberBytesConvertUtil.int2ByteArr(magic);
-	protected MappedByteBuffer queueMetaBuffer;
-	protected RandomAccessFile readStream;
-	protected RandomAccessFile writeStream;
+	private MappedByteBuffer queueMetaBuffer;
+	private RandomAccessFile readStream;
+	private RandomAccessFile writeStream;
 	protected FileChannel readChannel;
 	protected FileChannel writeChannel;
-	protected FileChannel metaChannel;
-	protected RandomAccessFile metaAccessFile;
+	private FileChannel metaChannel;
+	private RandomAccessFile metaAccessFile;
 	private static final int SIZE_OF_QUEUE_META = 36;
 
 	public AbstractFileQueueImpl(Config config) {
@@ -79,13 +79,13 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 				outputFile.createNewFile();
 			writeStream = new RandomAccessFile(outputFile, "rw");
 			writeChannel = writeStream.getChannel();
+			writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getSizePerFile());
 
 			File inputFile = new File(FileNameUtil.getFileName(config, readNumber.get()));
 			if (!inputFile.exists())
 				inputFile.createNewFile();
 			readStream = new RandomAccessFile(inputFile, "r");
 			readChannel = readStream.getChannel();
-			mappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getSizePerFile());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -185,4 +185,44 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		return delete(new File(config.getQueueFilePath()));
 	}
 
+	protected final void increateWriteNumber() throws IOException {
+		queueMetaBuffer.putLong(0, writeNumber.incrementAndGet());
+		writeChannel.close();
+		writeStream.close();
+		File outputFile = new File(FileNameUtil.getFileName(config, writeNumber.get()));
+		if (!outputFile.exists())
+			outputFile.createNewFile();
+		writeStream = new RandomAccessFile(outputFile, "rw");
+		writeChannel = writeStream.getChannel();
+		writePosition.set(0L);
+		writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getSizePerFile());
+	}
+
+	protected final void increateReadNumber() throws IOException {
+		queueMetaBuffer.putLong(16, readNumber.incrementAndGet());
+		readChannel.close();
+		readStream.close();
+		File inputFile = new File(FileNameUtil.getFileName(config, readNumber.get()));
+		if (!inputFile.exists())
+			inputFile.createNewFile();
+		readStream = new RandomAccessFile(inputFile, "r");
+		readChannel = readStream.getChannel();
+		readPosition.set(0L);
+	}
+
+	protected final void updateWriteMeta() {
+		queueMetaBuffer.position(8);
+		queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(writePosition.get()));
+		queueMetaBuffer.position(32);
+		queueMetaBuffer.put(NumberBytesConvertUtil.int2ByteArr(objectCount.incrementAndGet()));
+	}
+
+	protected final void updateReadMeta() {
+		queueMetaBuffer.putLong(24, readPosition.get());
+		queueMetaBuffer.putInt(32, objectCount.decrementAndGet());
+	}
+
+	protected final int getFileSize() {
+		return config.getSizePerFile();
+	}
 }

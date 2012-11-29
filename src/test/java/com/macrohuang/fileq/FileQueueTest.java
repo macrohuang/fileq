@@ -23,6 +23,7 @@ public class FileQueueTest {
 		Config config = new Config();
 		config.setQueueFilePath("D:\\tmp\\fileq");
 		config.setInit(true);
+		config.setSizePerFile(1024 * 50);
 		fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
 		fileQueue.clear();
     }

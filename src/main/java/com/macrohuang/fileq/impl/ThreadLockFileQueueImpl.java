@@ -60,32 +60,25 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		long size = metaBytes.length + objBytes.length + checkSum.length;
 		try {
 			writeLock.lock();
-			// mappedByteBuffer = writeChannel.map(MapMode.READ_WRITE,
-			// writePosition.get(), size);
-			if (mappedByteBuffer.position() + META_SIZE < mappedByteBuffer.limit()) {
-				mappedByteBuffer.put(metaBytes);
+			if (writeMappedByteBuffer.position() + META_SIZE < writeMappedByteBuffer.limit()) {
+				writeMappedByteBuffer.put(metaBytes);
 			} else {
-				mappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, mappedByteBuffer.position(), size);
+				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), size);
 			}
-			if (mappedByteBuffer.position() + objBytes.length < mappedByteBuffer.limit()) {
-				mappedByteBuffer.put(objBytes);
+			if (writeMappedByteBuffer.position() + objBytes.length < writeMappedByteBuffer.limit()) {
+				writeMappedByteBuffer.put(objBytes);
 			} else {
-				mappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, mappedByteBuffer.position(), objBytes.length + checkSum.length);
+				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), objBytes.length + checkSum.length);
 			}
-			if (mappedByteBuffer.position() + CHECKSUM_SIZE < mappedByteBuffer.limit()) {
-				mappedByteBuffer.put(checkSum);
+			if (writeMappedByteBuffer.position() + CHECKSUM_SIZE < writeMappedByteBuffer.limit()) {
+				writeMappedByteBuffer.put(checkSum);
 			} else {
-				mappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, mappedByteBuffer.position(), checkSum.length);
+				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), checkSum.length);
 			}
-			if (writePosition.addAndGet(size) >= config.getSizePerFile()) {// 超出单文件最大值，另起一文件
-
-			} else {
-
+			if (writePosition.addAndGet(size) >= getFileSize()) {
+				increateWriteNumber();
 			}
-			queueMetaBuffer.position(8);
-			queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(writePosition.get()));
-			queueMetaBuffer.position(32);
-			queueMetaBuffer.put(NumberBytesConvertUtil.int2ByteArr(objectCount.getAndIncrement()));
+			updateWriteMeta();
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		} finally {
@@ -118,6 +111,8 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
             			}else{
             				Thread.sleep(100);
             			}
+					} else if (position >= readChannel.size()) {
+						increateReadNumber();
             		}
             		metaBuffer.clear();
 					readChannel.read(metaBuffer, position);
@@ -140,11 +135,13 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
                 throw new CheckSumFailException();
             }
             if (remove){
-				queueMetaBuffer.putLong(24, readPosition.addAndGet(META_SIZE + objLength + CHECKSUM_SIZE));
-				queueMetaBuffer.putInt(32, objectCount.decrementAndGet());
+				readPosition.addAndGet(META_SIZE + objLength + CHECKSUM_SIZE);
+				if (readPosition.get() > readChannel.size()) {
+					increateReadNumber();
+				}
+				updateReadMeta();
             }
             return obj;
-
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
