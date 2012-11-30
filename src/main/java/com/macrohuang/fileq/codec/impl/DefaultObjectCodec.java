@@ -46,9 +46,4 @@ public class DefaultObjectCodec<T> implements Codec<T> {
             return null;
         }
     }
-
-	@Override
-	public void registType(Class<?> typeClass) {
-		type = typeClass;
-	}
 }

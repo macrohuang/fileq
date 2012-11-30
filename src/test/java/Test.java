@@ -34,6 +34,5 @@ public class Test {
 		System.out.printf("%x\n", Long.MIN_VALUE);
 		System.out.println(Arrays.toString(NumberBytesConvertUtil.long2ByteArr(Long.MAX_VALUE)));
 		System.out.println(Arrays.toString(NumberBytesConvertUtil.long2ByteArr(Long.MIN_VALUE)));
-
     }
 }

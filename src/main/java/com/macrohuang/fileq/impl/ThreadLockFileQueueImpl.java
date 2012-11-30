@@ -60,21 +60,21 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		long size = metaBytes.length + objBytes.length + checkSum.length;
 		try {
 			writeLock.lock();
-			if (writeMappedByteBuffer.position() + META_SIZE < writeMappedByteBuffer.limit()) {
-				writeMappedByteBuffer.put(metaBytes);
-			} else {
+			if (writeMappedByteBuffer.position() + META_SIZE > writeMappedByteBuffer.limit()) {
 				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), size);
 			}
-			if (writeMappedByteBuffer.position() + objBytes.length < writeMappedByteBuffer.limit()) {
-				writeMappedByteBuffer.put(objBytes);
-			} else {
+			writeMappedByteBuffer.put(metaBytes);
+
+			if (writeMappedByteBuffer.position() + objBytes.length > writeMappedByteBuffer.limit()) {
 				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), objBytes.length + checkSum.length);
 			}
-			if (writeMappedByteBuffer.position() + CHECKSUM_SIZE < writeMappedByteBuffer.limit()) {
-				writeMappedByteBuffer.put(checkSum);
-			} else {
+			writeMappedByteBuffer.put(objBytes);
+
+			if (writeMappedByteBuffer.position() + CHECKSUM_SIZE > writeMappedByteBuffer.limit()) {
 				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), checkSum.length);
 			}
+			writeMappedByteBuffer.put(checkSum);
+
 			if (writePosition.addAndGet(size) >= getFileSize()) {
 				increateWriteNumber();
 			}
@@ -136,7 +136,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
             }
             if (remove){
 				readPosition.addAndGet(META_SIZE + objLength + CHECKSUM_SIZE);
-				if (readPosition.get() > readChannel.size()) {
+				if (readPosition.get() >= readChannel.size()) {
 					increateReadNumber();
 				}
 				updateReadMeta();

@@ -16,6 +16,7 @@ public class KryoCodec<T> implements Codec<T> {
 	private ThreadLocal<Output> output = new ThreadLocal<Output>();
 	private ThreadLocal<Input> input = new ThreadLocal<Input>();
 	private Class<?> typeClass;
+	@Override
 	public byte[] encode(T element) {
 		if (typeClass==null){//guess the type class.
 			typeClass = element.getClass();
@@ -32,11 +33,11 @@ public class KryoCodec<T> implements Codec<T> {
 			this.output.set(output);
 		}
 		output.clear();
-//		kryo.writeClassAndObject(output, element);
-		kryo.writeObject(output, element);
+		kryo.writeClassAndObject(output, element);
         return output.toBytes();
     }
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public T decode(byte[] bytes) {
 		Kryo kryo = serializer.get();
@@ -51,12 +52,6 @@ public class KryoCodec<T> implements Codec<T> {
 			this.input.set(input);
 		}
         input.setBuffer(bytes);
-//		return (T) kryo.readClassAndObject(input);
-		return (T) kryo.readObject(input, typeClass);
+		return (T) kryo.readClassAndObject(input);
     }
-
-	@Override
-	public void registType(Class<?> typeClass) {
-		this.typeClass = typeClass;
-	}
 }

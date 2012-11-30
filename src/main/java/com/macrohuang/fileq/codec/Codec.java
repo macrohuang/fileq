@@ -9,6 +9,4 @@ public interface Codec<T> {
     byte[] encode(T element);
 
     T decode(byte[] bytes);
-    
-    void registType(Class<?> typeClass);
 }

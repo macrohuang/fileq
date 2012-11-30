@@ -52,6 +52,12 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	protected final void init() {
 		try {
+			if (config.isInit()) {
+				File filePathFile = new File(config.getQueueFilePath());
+				for (File file : filePathFile.listFiles()) {
+					file.delete();
+				}
+			}
 			File meta = new File(config.getQueueFilePath() + File.separator + Config.META_FILE_NAME);
 			boolean first = false;
 			if (!meta.exists()) {
@@ -137,7 +143,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	@Override
 	public E take() throws InterruptedException {
-		while (readPosition.get() == writePosition.get()) {
+		while (readNumber.get() >= writeNumber.get() && readPosition.get() >= writePosition.get()) {
 			Thread.sleep(100);
 		}
 		return peekInner(true, 0L);
@@ -145,13 +151,13 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	@Override
 	public E take(long timeout, TimeUnit unit) throws InterruptedException {
-		if (readPosition.get() == writePosition.get()) {
-			Thread.sleep(unit.convert(timeout, TimeUnit.MILLISECONDS));
+		if (readNumber.get() == writeNumber.get() && readPosition.get() == writePosition.get()) {
+			Thread.sleep(TimeUnit.MILLISECONDS.convert(timeout, unit));
 		}
 		if (readPosition.get() == writePosition.get()) {
 			return null;
 		}
-		return peekInner(true, unit.convert(timeout, TimeUnit.MILLISECONDS));
+		return peekInner(true, TimeUnit.MILLISECONDS.convert(timeout, unit));
 	}
 
 	@Override
@@ -187,6 +193,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	protected final void increateWriteNumber() throws IOException {
 		queueMetaBuffer.putLong(0, writeNumber.incrementAndGet());
+		// writeMappedByteBuffer.force();
 		writeChannel.close();
 		writeStream.close();
 		File outputFile = new File(FileNameUtil.getFileName(config, writeNumber.get()));
