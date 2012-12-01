@@ -51,9 +51,11 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	}
 
 	protected final void init() {
+		File filePathFile = new File(config.getQueueFilePath());
+		if (!filePathFile.exists())
+			filePathFile.mkdir();
 		try {
 			if (config.isInit()) {
-				File filePathFile = new File(config.getQueueFilePath());
 				for (File file : filePathFile.listFiles()) {
 					file.delete();
 				}
