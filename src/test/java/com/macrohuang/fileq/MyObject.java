@@ -2,7 +2,7 @@ package com.macrohuang.fileq;
 
 import java.io.Serializable;
 
-public class MyObject implements Serializable{
+public class MyObject implements Serializable, Comparable<MyObject> {
 	/**
 	 * 
 	 */
@@ -109,5 +109,10 @@ public class MyObject implements Serializable{
 		} else if (!tel.equals(other.tel))
 			return false;
 		return true;
+	}
+
+	@Override
+	public int compareTo(MyObject o) {
+		return this.name.compareTo(o.getName());
 	}
 }

@@ -161,23 +161,24 @@ public class FileQueueTest {
 
 	@Test
 	public void testReadSpeed() throws Exception {
+		config.setSizePerFile(1024 * 1024 * 500);
 		FileQueue<byte[]> fq = new ThreadLockFileQueueImpl<byte[]>(config);
 		byte[] content = new byte[1024];
 		for (int i = 0; i < 1024; i++) {
 			content[i] = 0x55;
 		}
 
-		int times = 200000;
+		int times = 100000;
 		for (int i = 0; i < times; i++) {
 			fq.add(content);
 		}
 		System.out.println("Add finished.");
 		long start = System.currentTimeMillis();
-		// Thread.sleep(1000);
-		// for (int i = 0; i < times; i++) {
-		// System.out.println(i);
-		// fq.take();
-		// }
+		Thread.sleep(1000);
+		for (int i = 0; i < times; i++) {
+			// System.out.println(i);
+			fq.take();
+		}
 
 		System.out.printf("[Read]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
 				(System.currentTimeMillis() - start), times, config.getSizePerFile());
@@ -204,7 +205,7 @@ public class FileQueueTest {
 
 	@Test
 	public void concurrentTestReadFasterThanWrite() throws Exception {
-		final int totalTimes = 10000;
+		final int totalTimes = 1000;
 		final int writerCount = 10;
 		final int readerCount = 20;
 
@@ -353,7 +354,7 @@ public class FileQueueTest {
 
 	@Test
 	public void concurrentTestWriterReaderWithSameSpeed() throws Exception {
-		final int totalTimes = 10000;
+		final int totalTimes = 100000;
 		final int writerCount = 20;
 		final int readerCount = 20;
 
