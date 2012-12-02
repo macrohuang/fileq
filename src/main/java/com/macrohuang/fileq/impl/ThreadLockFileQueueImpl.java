@@ -26,26 +26,6 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		super(config);
 	}
 
-	/*
-	 * @Override public void add(E e) { byte[] objBytes = codec.encode(e);
-	 * byte[] metaBytes = new byte[META_SIZE]; Arrays.fill(metaBytes,
-	 * (byte)0xff); System.arraycopy(LEADING_HEAD, 0, metaBytes, 0, 4);
-	 * System.arraycopy(NumberBytesConvertUtil.int2ByteArr(objBytes.length), 0,
-	 * metaBytes, 4, 4); byte[] checkSum = new byte[CHECKSUM_SIZE];
-	 * Arrays.fill(checkSum, (byte)0xff);
-	 * System.arraycopy(NumberBytesConvertUtil.int2ByteArr(META_SIZE +
-	 * objBytes.length), 0, checkSum, 0,
-	 * NumberBytesConvertUtil.int2ByteArr(META_SIZE + objBytes.length).length);
-	 * int size = metaBytes.length + objBytes.length + checkSum.length; try {
-	 * writeLock.lock(); ByteBuffer buffer = ByteBuffer.allocate(size);
-	 * buffer.put(metaBytes); buffer.put(objBytes); buffer.put(checkSum);
-	 * buffer.flip(); writeChannel.write(buffer); writePosition.addAndGet(size);
-	 * queueMetaBuffer.putLong(8, writePosition.get());
-	 * queueMetaBuffer.putInt(32, objectCount.incrementAndGet()); } catch
-	 * (IOException e1) { e1.printStackTrace(); } finally { writeLock.unlock();
-	 * } }
-	 */
-
 	 @Override
 	public void add(E e) {
 		byte[] objBytes = codec.encode(e);
