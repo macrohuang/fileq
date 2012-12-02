@@ -1,6 +1,7 @@
 package com.macrohuang.fileq.impl;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
@@ -31,8 +32,8 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	protected static final int magic = 1314520;
 	protected static final byte[] LEADING_HEAD = NumberBytesConvertUtil.int2ByteArr(magic);
 	private MappedByteBuffer queueMetaBuffer;
-	private RandomAccessFile readStream;
-	private RandomAccessFile writeStream;
+	private RandomAccessFile readFile;
+	private RandomAccessFile writeFile;
 	protected FileChannel readChannel;
 	protected FileChannel writeChannel;
 	private FileChannel metaChannel;
@@ -85,15 +86,15 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 			File outputFile = new File(FileNameUtil.getFileName(config, writeNumber.get()));
 			if (!outputFile.exists())
 				outputFile.createNewFile();
-			writeStream = new RandomAccessFile(outputFile, "rw");
-			writeChannel = writeStream.getChannel();
-			writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getSizePerFile());
+			writeFile = new RandomAccessFile(outputFile, "rw");
+			writeChannel = writeFile.getChannel();
+			writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getFileSize());
 
 			File inputFile = new File(FileNameUtil.getFileName(config, readNumber.get()));
 			if (!inputFile.exists())
 				inputFile.createNewFile();
-			readStream = new RandomAccessFile(inputFile, "r");
-			readChannel = readStream.getChannel();
+			readFile = new RandomAccessFile(inputFile, "r");
+			readChannel = readFile.getChannel();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -168,9 +169,9 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 			metaAccessFile.close();
 			metaChannel.close();
 			readChannel.close();
-			readStream.close();
+			readFile.close();
 			writeChannel.close();
-			writeStream.close();
+			writeFile.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -197,25 +198,51 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		queueMetaBuffer.putLong(0, writeNumber.incrementAndGet());
 		// writeMappedByteBuffer.force();
 		writeChannel.close();
-		writeStream.close();
+		writeFile.close();
 		File outputFile = new File(FileNameUtil.getFileName(config, writeNumber.get()));
 		if (!outputFile.exists())
 			outputFile.createNewFile();
-		writeStream = new RandomAccessFile(outputFile, "rw");
-		writeChannel = writeStream.getChannel();
+		writeFile = new RandomAccessFile(outputFile, "rw");
+		writeChannel = writeFile.getChannel();
 		writePosition.set(0L);
-		writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getSizePerFile());
+		writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getFileSize());
+	}
+
+	private boolean backupDataFile() {
+		if (config.isBackup()) {
+			File backupPath = new File(config.getBackupPath());
+			if (!backupPath.exists()) {
+				backupPath.mkdir();
+			}
+			try {
+				File backupFile = new File(config.getBackupPath() + FileNameUtil.getFileName(config, readNumber.get()));
+				if (!backupFile.exists()) {
+					backupFile.createNewFile();
+				}
+				FileOutputStream backupStream = new FileOutputStream(backupFile);
+				FileChannel targetChannel = backupStream.getChannel();
+				readChannel.transferTo(0, readChannel.size(), targetChannel);
+				backupStream.close();
+				targetChannel.close();
+			} catch (Exception e) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	protected final void increateReadNumber() throws IOException {
+		boolean backup = backupDataFile();
 		queueMetaBuffer.putLong(16, readNumber.incrementAndGet());
 		readChannel.close();
-		readStream.close();
+		readFile.close();
+		if (backup)
+			new File(FileNameUtil.getFileName(config, readNumber.get())).delete();
 		File inputFile = new File(FileNameUtil.getFileName(config, readNumber.get()));
 		if (!inputFile.exists())
 			inputFile.createNewFile();
-		readStream = new RandomAccessFile(inputFile, "r");
-		readChannel = readStream.getChannel();
+		readFile = new RandomAccessFile(inputFile, "r");
+		readChannel = readFile.getChannel();
 		readPosition.set(0L);
 	}
 
@@ -232,6 +259,6 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	}
 
 	protected final int getFileSize() {
-		return config.getSizePerFile();
+		return config.getFileSize();
 	}
 }

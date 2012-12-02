@@ -3,17 +3,18 @@ package com.macrohuang.fileq.conf;
 
 public class Config {
 	public static final String META_FILE_NAME = ".meta";
-	private int sizePerFile = 1024 * 1024 * 100;
+	private int fileSize = 1024 * 1024 * 100;
 	private boolean backup = false;
-	private String queueFilePath = System.getProperty("java.io.tmpdir", "/temp");
+	private String queueFilePath = System.getProperty("java.io.tmpdir", "/temp") + "/filequeue/data";
 	private String queueFilePrefix = "fileq_";
 	private String queueFileSuffix = ".data";
+	private final String backupPath = System.getProperty("java.io.tmpdir", "/temp") + "/filequeue/bak";
 	private boolean init = false;
-	public int getSizePerFile() {
-		return sizePerFile;
+	public int getFileSize() {
+		return fileSize;
 	}
-	public void setSizePerFile(int sizePerFile) {
-		this.sizePerFile = sizePerFile;
+	public void setFileSize(int sizePerFile) {
+		this.fileSize = sizePerFile;
 	}
 	public boolean isBackup() {
 		return backup;
@@ -50,5 +51,9 @@ public class Config {
 
 	public void setInit(boolean init) {
 		this.init = init;
+	}
+
+	public String getBackupPath() {
+		return backupPath;
 	}
 }

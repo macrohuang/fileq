@@ -28,7 +28,7 @@ public class FileQueueTest {
     public void init(){
 		config.setQueueFilePath("D:\\tmp\\fileq" + (index++));
 		config.setInit(true);
-		config.setSizePerFile(1024 * 1024 * 100);
+		config.setFileSize(1024 * 1024 * 100);
     }
     
     @Test
@@ -74,7 +74,8 @@ public class FileQueueTest {
 
 	@Test
 	public void testAddMultiFiles() throws Exception {
-		config.setSizePerFile(1024);
+		config.setFileSize(1024);
+		config.setBackup(true);
 		FileQueue<Integer> fq = new ThreadLockFileQueueImpl<Integer>(config);
 		int times = 2000;
 		for (int i = 0; i < times; i++) {
@@ -121,7 +122,7 @@ public class FileQueueTest {
 	@Test
 	public void testQueueRestart2() throws Exception {
 		int times = 1000;
-		config.setSizePerFile(1024);
+		config.setFileSize(1024);
 		FileQueue<Integer> fq = new ThreadLockFileQueueImpl<Integer>(config);
 		for (int i = 0; i < times; i++) {
 			fq.add(i);
@@ -155,14 +156,14 @@ public class FileQueueTest {
 			fq.add(content);
 		}
 		System.out.printf("[Write]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
-				(System.currentTimeMillis() - start), times, config.getSizePerFile());
+				(System.currentTimeMillis() - start), times, config.getFileSize());
 		fq.delete();
 
 	}
 
 	@Test
 	public void testReadSpeed() throws Exception {
-		config.setSizePerFile(1024 * 1024 * 500);
+		config.setFileSize(1024 * 1024 * 500);
 		FileQueue<byte[]> fq = new ThreadLockFileQueueImpl<byte[]>(config);
 		byte[] content = new byte[1024];
 		for (int i = 0; i < 1024; i++) {
@@ -182,7 +183,7 @@ public class FileQueueTest {
 		}
 
 		System.out.printf("[Read]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
-				(System.currentTimeMillis() - start), times, config.getSizePerFile());
+				(System.currentTimeMillis() - start), times, config.getFileSize());
 	}
 
 	@Test
@@ -201,7 +202,7 @@ public class FileQueueTest {
 			fq.take();
 		}
 		System.out.printf("[ReadWrite]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
-				(System.currentTimeMillis() - start), times, config.getSizePerFile());
+				(System.currentTimeMillis() - start), times, config.getFileSize());
 	}
 
 	@Test
