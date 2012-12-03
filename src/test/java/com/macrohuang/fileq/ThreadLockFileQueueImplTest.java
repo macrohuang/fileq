@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,7 +18,7 @@ import org.junit.Test;
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
 
-public class FileQueueTest {
+public class ThreadLockFileQueueImplTest {
 	int max = 10000;
     int threads = 20;
     ExecutorService executorService = Executors.newFixedThreadPool(threads);
@@ -26,7 +27,7 @@ public class FileQueueTest {
 
     @Before
     public void init(){
-		config.setQueueFilePath("D:\\tmp\\fileq" + (index++));
+		config.setBasePath("D:\\tmp\\fileq" + (index++));
 		config.setInit(true);
 		config.setFileSize(1024 * 1024 * 100);
     }
@@ -89,6 +90,19 @@ public class FileQueueTest {
 	}
 
 	@Test
+	public void testBackupFiles() throws Exception {
+		config.setFileSize(1024);
+		config.setBackup(true);
+		FileQueue<Integer> fq = new ThreadLockFileQueueImpl<Integer>(config);
+		int times = 2000;
+		for (int i = 0; i < times; i++) {
+			fq.add(i);
+			fq.take();
+		}
+		// fq.delete();
+	}
+
+	@Test
 	public void testGetTimeout() throws Exception {
 		final FileQueue<MyObject> fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
 		long start = System.currentTimeMillis();
@@ -100,7 +114,7 @@ public class FileQueueTest {
 
 	@Test
 	public void testQueueRestart() throws Exception {
-		int times = 10000;
+		int times = 10;
 		FileQueue<Integer> fq = new ThreadLockFileQueueImpl<Integer>(config);
 		for (int i = 0; i < times; i++) {
 			fq.add(i);
@@ -133,7 +147,7 @@ public class FileQueueTest {
 		}
 
 		fq.close();
-		Thread.sleep(5000);
+		Thread.sleep(2000);
 
 		config.setInit(false);
 		fq = new ThreadLockFileQueueImpl<Integer>(config);
@@ -207,19 +221,21 @@ public class FileQueueTest {
 
 	@Test
 	public void concurrentTestReadFasterThanWrite() throws Exception {
-		final int totalTimes = 100;
+		final int totalTimes = 10000;
 		final int writerCount = 10;
 		final int readerCount = 20;
 
 		final FileQueue<MyObject> fq = new ThreadLockFileQueueImpl<MyObject>(config);
-		final Set<MyObject> results = Collections.synchronizedSet(new TreeSet<MyObject>());
+		final Set<MyObject> results = new CopyOnWriteArraySet<MyObject>();
 
-		final Set<MyObject> expected = Collections.synchronizedSet(new TreeSet<MyObject>());
+		final Set<MyObject> expected = new CopyOnWriteArraySet<MyObject>();
 
 		final CountDownLatch startLatch = new CountDownLatch(1);
 		final CountDownLatch endLatch = new CountDownLatch(writerCount + readerCount);
 
 		for (int i = 0; i < writerCount; i++) {
+			System.out.printf("write thread %d start\n", i);
+			final int ii = i;
 			Thread writerThread = new Thread(new Runnable() {
 
 				@Override
@@ -240,14 +256,20 @@ public class FileQueueTest {
 							e.printStackTrace();
 						}
 					}
-
-					endLatch.countDown();
+					System.out.printf("write thread %d finished\n", ii);
 				}
 			});
-
-			writerThread.start();
+			try {
+				writerThread.start();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				endLatch.countDown();
+			}
 		}
 		for (int i = 0; i < readerCount; i++) {
+			System.out.printf("read thread %d start\n", i);
+			final int ii = i;
 			Thread readerThread = new Thread(new Runnable() {
 
 				@Override
@@ -268,10 +290,17 @@ public class FileQueueTest {
 							e.printStackTrace();
 						}
 					}
-					endLatch.countDown();
+					System.out.printf("read thread %d finished\n", ii);
 				}
 			});
-			readerThread.start();
+			try {
+				readerThread.start();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				endLatch.countDown();
+			}
+
 		}
 		startLatch.countDown();
 		endLatch.await();
@@ -312,12 +341,15 @@ public class FileQueueTest {
 							e.printStackTrace();
 						}
 					}
-
-					endLatch.countDown();
 				}
 			});
-
-			writerThread.start();
+			try {
+				writerThread.start();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				endLatch.countDown();
+			}
 		}
 
 		for (int i = 0; i < readerCount; i++) {
@@ -340,14 +372,17 @@ public class FileQueueTest {
 							e.printStackTrace();
 						}
 					}
-
-					endLatch.countDown();
 				}
 			});
 
-			readerThread.start();
+			try {
+				readerThread.start();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				endLatch.countDown();
+			}
 		}
-
 		startLatch.countDown();
 		endLatch.await();
 		Assert.assertTrue(expected.equals(results));
