@@ -34,8 +34,8 @@ public class FileUtil {
 		if (!path.exists() || !path.isDirectory())
 			path.mkdir();
 
-		File file = new File(path.getAbsolutePath() + File.separator + config.getQueueFilePrefix() + String.format("%019d", seq)
-				+ config.getQueueFileSuffix());
+		File file = new File(path.getAbsolutePath() + File.separator + config.getFilePrefix() + String.format("%019d", seq)
+				+ config.getFileSuffix());
 		if (!file.exists() || !file.isFile())
 			file.createNewFile();
 		return file;
@@ -46,8 +46,8 @@ public class FileUtil {
 		File bakPath = new File(config.getBasePath() + File.separator + Config.BAK_DIR);
 		if (!bakPath.exists() || !bakPath.isDirectory())
 			bakPath.mkdir();
-		File file = new File(bakPath.getAbsolutePath() + File.separator + config.getQueueFilePrefix() + String.format("%019d", seq)
-				+ config.getQueueFileSuffix());
+		File file = new File(bakPath.getAbsolutePath() + File.separator + config.getFilePrefix() + String.format("%019d", seq)
+				+ config.getFileSuffix());
 		if (!file.exists() || !file.isFile())
 			file.createNewFile();
 		return file;

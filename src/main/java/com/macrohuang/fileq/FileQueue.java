@@ -1,5 +1,30 @@
 package com.macrohuang.fileq;
 
+/**
+ * A file queue using java serialize to store binary data in file. 
+ * The file queue has three types of file, backup file, data file and meta file. The data and meta files are in the basePath/data directory, the backup files are in the basePath/bak directory.<br>
+ * <ul>
+ * <li> The meta file is a file of 46 bytes binary file<br>
+ * <table>
+ * <th><td>bytes</td><td>data</td><td>describe</td></th>
+ * <tr><td> 1 -  2</td><td>WN</td><td>short for write number</td></tr>
+ * <tr><td> 3 - 10</td><td>an 8 bytes long integer</td><td>current sequence of writing file.</td></tr>
+ * <tr><td>11 - 12</td><td>WP</td><td>short for write position</td></tr>
+ * <tr><td>13 - 20</td><td>an 8 bytes long integer</td><td>Current write file offset.</td></tr>
+ * <tr><td>21 - 22</td><td>RN</td><td>short for read number</td></tr>
+ * <tr><td>23 - 30</td><td>an 8 bytes long integer</td><td>current sequence of reading file.</td></tr>
+ * <tr><td>31 - 32</td><td>RP</td><td>short for read position</td></tr>
+ * <tr><td>33 - 40</td><td>an 8 bytes long integer</td><td>Current read file offset.</td></tr>
+ * <tr><td>41 - 42</td><td>OC</td><td>short for object count</td></tr>
+ * <tr><td>43 - 46</td><td>an 4 bytes integer</td><td>Unread object counts in the queue.</td></tr>
+ * </table>
+ * </li>
+ * <li>
+ * 	The data file is padding of object bytes. Each object has a 16 bytes meta, including a magic number and an integer L describe the body length.<br>
+ * After the meta are L bytes of object data. Following is an 16 bytes checksum.
+ * </li>
+ */ 
+
 import java.util.concurrent.TimeUnit;
 
 import com.macrohuang.fileq.exception.FileQueueClosedException;

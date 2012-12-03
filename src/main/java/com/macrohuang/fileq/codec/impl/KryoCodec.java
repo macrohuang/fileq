@@ -11,13 +11,13 @@ import com.macrohuang.fileq.codec.Codec;
  * 
  * @param <E>
  */
-public class KryoCodec<T> implements Codec<T> {
+public class KryoCodec implements Codec {
 	private ThreadLocal<Kryo> serializer = new ThreadLocal<Kryo>();
 	private ThreadLocal<Output> output = new ThreadLocal<Output>();
 	private ThreadLocal<Input> input = new ThreadLocal<Input>();
 	private Class<?> typeClass;
 	@Override
-	public byte[] encode(T element) {
+	public byte[] encode(Object element) {
 		if (typeClass==null){//guess the type class.
 			typeClass = element.getClass();
 		}
@@ -39,7 +39,7 @@ public class KryoCodec<T> implements Codec<T> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public T decode(byte[] bytes) {
+	public <T> T decode(byte[] bytes) {
 		Kryo kryo = serializer.get();
 		Input input = this.input.get();
 		if (kryo == null) {

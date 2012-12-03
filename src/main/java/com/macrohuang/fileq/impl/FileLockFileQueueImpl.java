@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.macrohuang.fileq.FileQueue;
-import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.exception.CheckSumFailException;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
@@ -19,7 +18,6 @@ import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 public class FileLockFileQueueImpl<E> extends AbstractFileQueueImpl<E> implements FileQueue<E> {
 	private AtomicInteger objectCount;
 	private FileChannel fileChannel;
-	private Codec<E> codec;
 	private AtomicLong writePosition;
 	private AtomicLong readPosition;
 	private MappedByteBuffer byteBuffer;

@@ -9,8 +9,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.macrohuang.fileq.codec.Codec;
-import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.codec.impl.DefaultObjectCodec;
+import com.macrohuang.fileq.codec.impl.KryoCodec;
 
 public class CodecTest {
     private int MAX_OBJS = 10000;
@@ -24,22 +24,23 @@ public class CodecTest {
 		objectBytes = new byte[MAX_OBJS][];
 	}
 
-	private void encode(Codec<MyObject> codec) {
+	private void encode(Codec codec) {
 		for (int i = 0; i < MAX_OBJS; i++) {
 			objectBytes[i] = codec.encode(new MyObject());
 		}
 	}
 
-	private void decode(Codec<MyObject> codec) {
+	private void decode(Codec codec) {
 		for (int i = 0; i < MAX_OBJS; i++) {
 			codec.decode(objectBytes[i]);
 		}
 	}
 
-	private void encodeMultThread(final Codec<MyObject> codec) throws InterruptedException {
+	private void encodeMultThread(final Codec codec) throws InterruptedException {
 		for (int i = 0; i < MAX_THREADS; i++) {
 			final int k = i;
 			executors.submit(new Runnable() {
+				@Override
 				public void run() {
 					for (int j = 0; j < OBJS_PER_THREAD; j++) {
 						objectBytes[k * OBJS_PER_THREAD + j] = codec.encode(new MyObject());
@@ -51,10 +52,11 @@ public class CodecTest {
 		executors.awaitTermination(100, TimeUnit.SECONDS);
 	}
 
-	private void decodeMultThread(final Codec<MyObject> codec) throws InterruptedException {
+	private void decodeMultThread(final Codec codec) throws InterruptedException {
 		for (int i = 0; i < MAX_THREADS; i++) {
 			final int k = i;
 			executors.submit(new Runnable() {
+				@Override
 				public void run() {
 					for (int j = 0; j < OBJS_PER_THREAD; j++) {
 						codec.decode(objectBytes[k * OBJS_PER_THREAD + j]);
@@ -68,48 +70,48 @@ public class CodecTest {
 
 	@Test
 	public void testDefaultSerializeEncode() {
-		encode(new DefaultObjectCodec<MyObject>());
+		encode(new DefaultObjectCodec());
 	}
 
 	@Test
 	public void testDefaultSerializeDecode() {
-		Codec<MyObject> codec = new DefaultObjectCodec<MyObject>();
+		Codec codec = new DefaultObjectCodec();
 		encode(codec);
 		decode(codec);
 	}
 
 	@Test
 	public void testDefaultSerializeEncodeMultThreads() throws InterruptedException {
-		encodeMultThread(new DefaultObjectCodec<MyObject>());
+		encodeMultThread(new DefaultObjectCodec());
 	}
 
 	@Test
 	public void testDefaultSerializeDecodeMultThreads() throws InterruptedException {
-		final Codec<MyObject> codec = new DefaultObjectCodec<MyObject>();
+		final Codec codec = new DefaultObjectCodec();
 		encode(codec);
 		decodeMultThread(codec);
 	}
 
 	@Test
 	public void testKryoSerializeEncode() {
-		encode(new KryoCodec<MyObject>());
+		encode(new KryoCodec());
 	}
 
 	@Test
 	public void testKryoSerializeDecode() {
-		Codec<MyObject> codec = new KryoCodec<MyObject>();
+		Codec codec = new KryoCodec();
 		encode(codec);
 		decode(codec);
 	}
 
 	@Test
 	public void testKryoSerializeEncodeMultThreads() throws InterruptedException {
-		encodeMultThread(new KryoCodec<MyObject>());
+		encodeMultThread(new KryoCodec());
 	}
 
 	@Test
 	public void testKryoSerializeDecodeMultThreads() throws InterruptedException {
-		final Codec<MyObject> codec = new KryoCodec<MyObject>();
+		final Codec codec = new KryoCodec();
 		encode(codec);
 		decodeMultThread(codec);
 	}

@@ -1,16 +1,20 @@
 package com.macrohuang.fileq.conf;
 
+import com.macrohuang.fileq.codec.Codec;
+import com.macrohuang.fileq.codec.impl.KryoCodec;
+
 
 public class Config {
 	public static final String META_FILE_NAME = ".meta";
 	private int fileSize = 1024 * 1024 * 100;
-	private boolean backup = false;
+	private boolean backup = true;
 	private String basePath = System.getProperty("java.io.tmpdir", "/temp");
-	private String queueFilePrefix = "fileq_";
-	private String queueFileSuffix = ".data";
+	private String filePrefix = "fileq_";
+	private String fileSuffix = ".data";
 	private boolean init = false;
 	public static final String DATA_DIR = "data";
 	public static final String BAK_DIR = "bak";
+	private Codec codec = new KryoCodec();
 	public int getFileSize() {
 		return fileSize;
 	}
@@ -31,20 +35,20 @@ public class Config {
 	public void setBasePath(String basePath) {
 		this.basePath = basePath;
 	}
-	public String getQueueFilePrefix() {
-		return queueFilePrefix;
+	public String getFilePrefix() {
+		return filePrefix;
 	}
 
-	public void setQueueFilePrefix(String queueFilePrefix) {
-		this.queueFilePrefix = queueFilePrefix;
+	public void setFilePrefix(String queueFilePrefix) {
+		this.filePrefix = queueFilePrefix;
 	}
 
-	public String getQueueFileSuffix() {
-		return queueFileSuffix;
+	public String getFileSuffix() {
+		return fileSuffix;
 	}
 
-	public void setQueueFileSuffix(String queueFileSuffix) {
-		this.queueFileSuffix = queueFileSuffix;
+	public void setFileSuffix(String queueFileSuffix) {
+		this.fileSuffix = queueFileSuffix;
 	}
 
 	public boolean isInit() {
@@ -53,5 +57,13 @@ public class Config {
 
 	public void setInit(boolean init) {
 		this.init = init;
+	}
+
+	public Codec getCodec() {
+		return codec;
+	}
+
+	public void setCodec(Codec codec) {
+		this.codec = codec;
 	}
 }

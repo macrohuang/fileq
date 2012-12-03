@@ -14,12 +14,12 @@ import com.macrohuang.fileq.codec.Codec;
  * @author macro
  * 
  */
-public class DefaultObjectCodec<T> implements Codec<T> {
+public class DefaultObjectCodec implements Codec {
 	// private static final Logger log =
 	// LoggerFactory.getLogger(DefaultObjectCodec.class);
 	private Class<?> type;
     @Override
-	public byte[] encode(T element) {
+	public byte[] encode(Object element) {
     	if (type ==null){
     		this.type = element.getClass();
     	}
@@ -36,7 +36,7 @@ public class DefaultObjectCodec<T> implements Codec<T> {
 
     @Override
 	@SuppressWarnings("unchecked")
-	public T decode(byte[] bytes) {
+	public <T> T decode(byte[] bytes) {
         ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
         try {
             ObjectInputStream ois = new ObjectInputStream(bis);

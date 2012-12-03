@@ -4,9 +4,9 @@ package com.macrohuang.fileq.codec;
  * @author Leo Liang
  * 
  */
-public interface Codec<T> {
+public interface Codec {
 
-    byte[] encode(T element);
+    byte[] encode(Object element);
 
-    T decode(byte[] bytes);
+	<T> T decode(byte[] bytes);
 }

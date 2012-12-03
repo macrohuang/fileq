@@ -21,7 +21,7 @@ import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	private Config config;
 	private final AtomicInteger objectCount;
-	protected Codec<E> codec;
+	protected Codec codec;
 	private final AtomicLong writeNumber;
 	protected AtomicLong writePosition;
 	private final AtomicLong readNumber;
@@ -31,24 +31,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	protected static final int CHECKSUM_SIZE = 16;
 	protected static final int magic = 1314520;
 	protected static final byte[] LEADING_HEAD = NumberBytesConvertUtil.int2ByteArr(magic);
-	private MappedByteBuffer queueMetaBuffer;// 46 bytes: 1-2: WN, short for
-												// write number; 3-10: an 8
-												// bytes long number, means
-												// write number; 11-12: WP,
-												// short for write position;
-												// 13-20: an 8 bytes long
-												// number, means write position;
-												// 21-22:RN, short for read
-												// number; 23-30: an 8 bytes
-												// long number, means read
-												// number; 31-32: RP, short for
-												// read position; 33-40: an 8
-												// bytes long number, means read
-												// position; 41-42: OC, short
-												// for Object Count; 43-46: a 4
-												// bytes integer, means object
-												// count.
-
+	private MappedByteBuffer queueMetaBuffer;
 	private RandomAccessFile readFile;
 	private RandomAccessFile writeFile;
 	protected FileChannel readChannel;
@@ -74,7 +57,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	}
 
 	public AbstractFileQueueImpl(Config config) {
-		codec = new KryoCodec<E>();
+		codec = config.getCodec() == null ? new KryoCodec() : config.getCodec();
 		objectCount = new AtomicInteger(0);
 		writeNumber = new AtomicLong(0);
 		readNumber = new AtomicLong(0);
