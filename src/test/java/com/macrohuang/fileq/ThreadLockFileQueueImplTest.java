@@ -198,6 +198,7 @@ public class ThreadLockFileQueueImplTest {
 
 		System.out.printf("[Read]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
 				(System.currentTimeMillis() - start), times, config.getFileSize());
+		fq.delete();
 	}
 
 	@Test
@@ -217,6 +218,7 @@ public class ThreadLockFileQueueImplTest {
 		}
 		System.out.printf("[ReadWrite]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
 				(System.currentTimeMillis() - start), times, config.getFileSize());
+		fq.delete();
 	}
 
 	@Test
