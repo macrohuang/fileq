@@ -2,6 +2,8 @@ package com.macrohuang.fileq.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import com.macrohuang.fileq.conf.Config;
 
@@ -20,7 +22,7 @@ public class FileUtil {
 		createBasePathIfNotExists(config);
 		File path = new File(config.getBasePath() + File.separator + Config.DATA_DIR);
 		if (!path.exists() || !path.isDirectory())
-			path.mkdir();
+			path.mkdirs();
 
 		File file = new File(path.getAbsolutePath() + File.separator + Config.META_FILE_NAME);
 		if (!file.exists() || !file.isFile()) {
@@ -32,7 +34,7 @@ public class FileUtil {
 		createBasePathIfNotExists(config);
 		File path = new File(config.getBasePath() + File.separator + Config.DATA_DIR);
 		if (!path.exists() || !path.isDirectory())
-			path.mkdir();
+			path.mkdirs();
 
 		File file = new File(path.getAbsolutePath() + File.separator + config.getFilePrefix() + String.format("%019d", seq)
 				+ config.getFileSuffix());
@@ -43,9 +45,11 @@ public class FileUtil {
 
 	public static final File getBakFile(Config config, long seq) throws IOException {
 		createBasePathIfNotExists(config);
-		File bakPath = new File(config.getBasePath() + File.separator + Config.BAK_DIR);
+		SimpleDateFormat pathPattern = new SimpleDateFormat("yyyy-MM-dd");
+		File bakPath = new File(config.getBasePath() + File.separator + Config.BAK_DIR + File.separator
+				+ pathPattern.format(new Date()));
 		if (!bakPath.exists() || !bakPath.isDirectory())
-			bakPath.mkdir();
+			bakPath.mkdirs();
 		File file = new File(bakPath.getAbsolutePath() + File.separator + config.getFilePrefix() + String.format("%019d", seq)
 				+ config.getFileSuffix());
 		if (!file.exists() || !file.isFile())

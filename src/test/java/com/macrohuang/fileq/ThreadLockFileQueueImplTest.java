@@ -27,7 +27,7 @@ public class ThreadLockFileQueueImplTest {
 
     @Before
     public void init(){
-		config.setBasePath("D:\\tmp\\fileq" + (index++));
+		config.setBasePath("d:\\tmp\\filequeue" + (index++));
 		config.setInit(true);
 		config.setFileSize(1024 * 1024 * 100);
     }
