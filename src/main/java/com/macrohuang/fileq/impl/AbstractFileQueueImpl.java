@@ -31,14 +31,47 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	protected static final int CHECKSUM_SIZE = 16;
 	protected static final int magic = 1314520;
 	protected static final byte[] LEADING_HEAD = NumberBytesConvertUtil.int2ByteArr(magic);
-	private MappedByteBuffer queueMetaBuffer;
+	private MappedByteBuffer queueMetaBuffer;// 46 bytes: 1-2: WN, short for
+												// write number; 3-10: an 8
+												// bytes long number, means
+												// write number; 11-12: WP,
+												// short for write position;
+												// 13-20: an 8 bytes long
+												// number, means write position;
+												// 21-22:RN, short for read
+												// number; 23-30: an 8 bytes
+												// long number, means read
+												// number; 31-32: RP, short for
+												// read position; 33-40: an 8
+												// bytes long number, means read
+												// position; 41-42: OC, short
+												// for Object Count; 43-46: a 4
+												// bytes integer, means object
+												// count.
+
 	private RandomAccessFile readFile;
 	private RandomAccessFile writeFile;
 	protected FileChannel readChannel;
 	protected FileChannel writeChannel;
 	private FileChannel metaChannel;
 	private RandomAccessFile metaAccessFile;
-	private static final int SIZE_OF_QUEUE_META = 36;
+	private static final int SIZE_OF_QUEUE_META = 46;
+	
+	public enum MetaOffset {
+		WriteNumberName(0), WriteNumber(2), WritePositionName(10), WritePosition(12), ReadNumberName(20), ReadNumber(22), ReadPositionName(30), ReadPosition(
+				32), ObjectCountName(40), ObjectCount(42);
+		private MetaOffset(int offset){
+			this.offset = offset;
+		}
+		public int getOffset() {
+			return offset;
+		}
+		public void setOffset(int offset) {
+			this.offset = offset;
+		}
+
+		private int offset;
+	}
 
 	public AbstractFileQueueImpl(Config config) {
 		codec = new KryoCodec<E>();
@@ -62,16 +95,21 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 			metaChannel = metaAccessFile.getChannel();
 			queueMetaBuffer = metaChannel.map(MapMode.READ_WRITE, 0, SIZE_OF_QUEUE_META);
 			if (!isNew && !config.isInit()) {
-				writeNumber.set(queueMetaBuffer.getLong());
-				writePosition.set(queueMetaBuffer.getLong());
-				readNumber.set(queueMetaBuffer.getLong());
-				readPosition.set(queueMetaBuffer.getLong());
-				objectCount.set(queueMetaBuffer.getInt());
+				writeNumber.set(queueMetaBuffer.getLong(MetaOffset.WriteNumber.offset));
+				writePosition.set(queueMetaBuffer.getLong(MetaOffset.WritePosition.offset));
+				readNumber.set(queueMetaBuffer.getLong(MetaOffset.ReadNumber.offset));
+				readPosition.set(queueMetaBuffer.getLong(MetaOffset.ReadPosition.offset));
+				objectCount.set(queueMetaBuffer.getInt(MetaOffset.ObjectCount.offset));
 			} else {
+				queueMetaBuffer.put("WN".getBytes());
 				queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(0L));
+				queueMetaBuffer.put("WP".getBytes());
 				queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(0L));
+				queueMetaBuffer.put("RN".getBytes());
 				queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(0L));
+				queueMetaBuffer.put("RP".getBytes());
 				queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(0L));
+				queueMetaBuffer.put("OC".getBytes());
 				queueMetaBuffer.put(NumberBytesConvertUtil.int2ByteArr(0));
 			}
 			writeFile = new RandomAccessFile(FileUtil.getDataFile(config, writeNumber.get()), "rw");
@@ -180,7 +218,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	}
 
 	protected void increateWriteNumber() throws IOException {
-		queueMetaBuffer.putLong(0, writeNumber.incrementAndGet());
+		queueMetaBuffer.putLong(MetaOffset.WriteNumber.offset, writeNumber.incrementAndGet());
 		writeChannel.close();
 		writeFile.close();
 		writeFile = new RandomAccessFile(FileUtil.getDataFile(config, writeNumber.get()), "rw");
@@ -207,7 +245,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	protected void increateReadNumber() throws IOException {
 		boolean backup = backupDataFile();
 		File toDelFile = FileUtil.getDataFile(config, readNumber.get());
-		queueMetaBuffer.putLong(16, readNumber.incrementAndGet());
+		queueMetaBuffer.putLong(MetaOffset.ReadNumber.offset, readNumber.incrementAndGet());
 		readChannel.close();
 		readFile.close();
 		readFile = new RandomAccessFile(FileUtil.getDataFile(config, readNumber.get()), "r");
@@ -218,15 +256,15 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	}
 
 	protected final void updateWriteMeta() {
-		queueMetaBuffer.position(8);
+		queueMetaBuffer.position(MetaOffset.WritePosition.offset);
 		queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(writePosition.get()));
-		queueMetaBuffer.position(32);
+		queueMetaBuffer.position(MetaOffset.ObjectCount.offset);
 		queueMetaBuffer.put(NumberBytesConvertUtil.int2ByteArr(objectCount.incrementAndGet()));
 	}
 
 	protected final void updateReadMeta() {
-		queueMetaBuffer.putLong(24, readPosition.get());
-		queueMetaBuffer.putInt(32, objectCount.decrementAndGet());
+		queueMetaBuffer.putLong(MetaOffset.ReadPosition.offset, readPosition.get());
+		queueMetaBuffer.putInt(MetaOffset.ObjectCount.offset, objectCount.decrementAndGet());
 	}
 
 	protected final int getFileSize() {
