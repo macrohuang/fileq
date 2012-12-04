@@ -84,12 +84,12 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
             	while(!success){
             		if (position == writePosition.get()){
             			if (timeout>0){
-            				Thread.sleep(timeout);
+							Thread.sleep(timeout);
             				if (position == writePosition.get()){
             					return null;
             				}
             			}else{
-            				Thread.sleep(100);
+							Thread.sleep(100);
             			}
 					} else if (position >= readChannel.size()) {
 						increateReadNumber();

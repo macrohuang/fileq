@@ -145,6 +145,23 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	}
 
 	@Override
+	public E peek(long timeout, TimeUnit timeUnit) throws InterruptedException {
+		if (readNumber.get() == writeNumber.get() && readPosition.get() == writePosition.get()) {
+			if (timeout > 0) {
+				Thread.sleep(TimeUnit.MILLISECONDS.convert(timeout, timeUnit));
+			} else {
+				while (readNumber.get() >= writeNumber.get() && readPosition.get() >= writePosition.get()) {
+					Thread.sleep(100);
+				}
+			}
+		}
+		if (readPosition.get() == writePosition.get()) {
+			return null;
+		}
+		return peekInner(false, TimeUnit.MILLISECONDS.convert(timeout, timeUnit));
+	}
+
+	@Override
 	public void clear() {
 		objectCount.getAndSet(0);
 		readPosition.getAndSet(writePosition.get());

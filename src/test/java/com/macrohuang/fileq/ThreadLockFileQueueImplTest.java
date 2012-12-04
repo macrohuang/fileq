@@ -74,6 +74,20 @@ public class ThreadLockFileQueueImplTest {
     }
 
 	@Test
+	public void testBlockingPeek() throws InterruptedException {
+		final FileQueue<MyObject> fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
+		MyObject myObject = fileQueue.peek(1, TimeUnit.SECONDS);
+		Assert.assertNull(myObject);
+		fileQueue.add(new MyObject());
+		MyObject myObject2 = fileQueue.peek();
+		myObject = fileQueue.peek(1, TimeUnit.SECONDS);
+		Assert.assertNotNull(myObject);
+		Assert.assertNotNull(myObject2);
+		org.junit.Assert.assertEquals(myObject, myObject2);
+		fileQueue.delete();
+	}
+
+	@Test
 	public void testAddMultiFiles() throws Exception {
 		config.setFileSize(1024);
 		config.setBackup(true);

@@ -66,11 +66,26 @@ public interface FileQueue<E extends Object> {
      */
     public E remove() throws FileQueueClosedException;
 
-    /**
-     * Get the tail object of the queue, but not move the read position forward.
-     * @return
-     */
+	/**
+	 * Get the tail object of the queue, but not move the read position forward.
+	 * If the queue is empty, a null will be returned.
+	 * 
+	 * @return
+	 */
     public E peek() throws FileQueueClosedException;
+
+	/**
+	 * Get the tail object of the queue, but not move the read position forward.
+	 * If the queue is empty, wait for timeout, if still empty then a null will
+	 * be returned.
+	 * 
+	 * @param timeout
+	 *            The value of timeout, 0 stands for never timeout.
+	 * @param timeUnit
+	 * @return
+	 * @throws InterruptedException
+	 */
+	public E peek(long timeout, TimeUnit timeUnit) throws InterruptedException;
 
     /**
      * Set the read position to the write position, skip any object unread if exists.
