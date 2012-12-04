@@ -33,9 +33,9 @@ public class ThreadLockFileQueueImplTest {
     }
     
     @Test
-    public void testAdd() {
+	public void testAdd() throws InterruptedException {
 		FileQueue<MyObject> fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
-        for (int i = 0; i < max; i++) {
+		for (int i = 0; i < max; i++) {
             fileQueue.add(new MyObject());
         }
         Assert.assertEquals(max, fileQueue.size());
