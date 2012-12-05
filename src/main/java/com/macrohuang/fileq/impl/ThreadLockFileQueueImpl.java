@@ -40,21 +40,13 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		long size = metaBytes.length + objBytes.length + checkSum.length;
 		try {
 			writeLock.lock();
-			if (writeMappedByteBuffer.position() + META_SIZE > writeMappedByteBuffer.limit()) {
+			// Current object exceed the file size, expand it first.
+			if (writeMappedByteBuffer.position() + size > writeMappedByteBuffer.limit()) {
 				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), size);
 			}
 			writeMappedByteBuffer.put(metaBytes);
-
-			if (writeMappedByteBuffer.position() + objBytes.length > writeMappedByteBuffer.limit()) {
-				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), objBytes.length + checkSum.length);
-			}
 			writeMappedByteBuffer.put(objBytes);
-
-			if (writeMappedByteBuffer.position() + CHECKSUM_SIZE > writeMappedByteBuffer.limit()) {
-				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), checkSum.length);
-			}
 			writeMappedByteBuffer.put(checkSum);
-
 			if (writePosition.addAndGet(size) >= getFileSize()) {
 				increateWriteNumber();
 			}
@@ -84,12 +76,12 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
             	while(!success){
             		if (position == writePosition.get()){
             			if (timeout>0){
-            				Thread.sleep(timeout);
+							Thread.sleep(timeout);
             				if (position == writePosition.get()){
             					return null;
             				}
             			}else{
-            				Thread.sleep(100);
+							Thread.sleep(100);
             			}
 					} else if (position >= readChannel.size()) {
 						increateReadNumber();
