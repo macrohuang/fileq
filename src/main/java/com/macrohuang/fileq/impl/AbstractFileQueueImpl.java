@@ -132,30 +132,30 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	@Override
 	public E remove() {
-		if (readPosition.get() == writePosition.get())
+		if (objectCount.get() == 0)
 			return null;
 		return peekInner(true, 0L);
 	}
 
 	@Override
 	public E peek() {
-		if (readPosition.get() == writePosition.get())
+		if (objectCount.get() == 0)
 			return null;
 		return peekInner(false, 0L);
 	}
 
 	@Override
 	public E peek(long timeout, TimeUnit timeUnit) throws InterruptedException {
-		if (readNumber.get() == writeNumber.get() && readPosition.get() == writePosition.get()) {
+		if (objectCount.get() == 0) {
 			if (timeout > 0) {
 				Thread.sleep(TimeUnit.MILLISECONDS.convert(timeout, timeUnit));
 			} else {
-				while (readNumber.get() >= writeNumber.get() && readPosition.get() >= writePosition.get()) {
+				while (objectCount.get() == 0) {
 					Thread.sleep(100);
 				}
 			}
 		}
-		if (readPosition.get() == writePosition.get()) {
+		if (objectCount.get() == 0) {
 			return null;
 		}
 		return peekInner(false, TimeUnit.MILLISECONDS.convert(timeout, timeUnit));
@@ -169,7 +169,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	@Override
 	public E take() throws InterruptedException {
-		while (readNumber.get() >= writeNumber.get() && readPosition.get() >= writePosition.get()) {
+		while (objectCount.get() == 0) {
 			Thread.sleep(100);
 		}
 		return peekInner(true, 0L);
@@ -177,10 +177,10 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	@Override
 	public E take(long timeout, TimeUnit unit) throws InterruptedException {
-		if (readNumber.get() == writeNumber.get() && readPosition.get() == writePosition.get()) {
+		if (objectCount.get() == 0) {
 			Thread.sleep(TimeUnit.MILLISECONDS.convert(timeout, unit));
 		}
-		if (readPosition.get() == writePosition.get()) {
+		if (objectCount.get() == 0) {
 			return null;
 		}
 		return peekInner(true, TimeUnit.MILLISECONDS.convert(timeout, unit));
@@ -224,6 +224,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		writeFile = new RandomAccessFile(FileUtil.getDataFile(config, writeNumber.get()), "rw");
 		writeChannel = writeFile.getChannel();
 		writePosition.set(0L);
+		queueMetaBuffer.putLong(MetaOffset.WritePosition.offset, writePosition.get());
 		writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getFileSize());
 	}
 
@@ -251,15 +252,14 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		readFile = new RandomAccessFile(FileUtil.getDataFile(config, readNumber.get()), "r");
 		readChannel = readFile.getChannel();
 		readPosition.set(0L);
+		queueMetaBuffer.putLong(MetaOffset.ReadPosition.offset, readPosition.get());
 		if (backup)
 			toDelFile.delete();
 	}
 
 	protected final void updateWriteMeta() {
-		queueMetaBuffer.position(MetaOffset.WritePosition.offset);
-		queueMetaBuffer.put(NumberBytesConvertUtil.long2ByteArr(writePosition.get()));
-		queueMetaBuffer.position(MetaOffset.ObjectCount.offset);
-		queueMetaBuffer.put(NumberBytesConvertUtil.int2ByteArr(objectCount.incrementAndGet()));
+		queueMetaBuffer.putLong(MetaOffset.WritePosition.offset, writePosition.get());
+		queueMetaBuffer.putInt(MetaOffset.ObjectCount.offset, objectCount.incrementAndGet());
 	}
 
 	protected final void updateReadMeta() {
