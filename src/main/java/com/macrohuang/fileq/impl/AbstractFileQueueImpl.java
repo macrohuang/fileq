@@ -98,6 +98,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 			writeFile = new RandomAccessFile(FileUtil.getDataFile(config, writeNumber.get()), "rw");
 			writeChannel = writeFile.getChannel();
 			writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getFileSize());
+			writeMappedByteBuffer.position(Long.valueOf(writePosition.get()).intValue());
 
 			readFile = new RandomAccessFile(FileUtil.getDataFile(config, readNumber.get()), "r");
 			readChannel = readFile.getChannel();
