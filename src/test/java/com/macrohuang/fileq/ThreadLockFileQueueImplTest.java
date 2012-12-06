@@ -320,7 +320,7 @@ public class ThreadLockFileQueueImplTest {
 		}
 		startLatch.countDown();
 		endLatch.await();
-		Assert.assertTrue(expected.equals(results));
+		Assert.assertEquals(expected, results);
 	}
 
 	@Test
