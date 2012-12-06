@@ -41,7 +41,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		try {
 			writeLock.lock();
 			// Current object exceed the file size, expand it first.
-			if (writeMappedByteBuffer.position() + size > writeMappedByteBuffer.limit()) {
+			if (writeMappedByteBuffer.position() + size > writeMappedByteBuffer.capacity()) {
 				writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), size);
 			}
 			writeMappedByteBuffer.put(metaBytes);
