@@ -71,7 +71,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		try {
 			if (config.isInit()) {
 				File basePath = new File(config.getBasePath());
-				delete(basePath);
+				FileUtil.delete(basePath);
 			}
 			boolean isNew = FileUtil.isMetaExists(config);
 			metaAccessFile = new RandomAccessFile(FileUtil.getMetaFile(config), "rw");
@@ -201,21 +201,10 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		}
 	}
 
-	public boolean delete(File file) {
-		boolean success = true;
-		if (file.isDirectory()) {
-			for (File file2 : file.listFiles()) {
-				success &= delete(file2);
-			}
-		}
-		success &= file.delete();
-		return success;
-	}
-
 	@Override
 	public boolean delete() {
 		close();
-		return delete(new File(config.getBasePath()));
+		return FileUtil.delete(new File(config.getBasePath()));
 	}
 
 	protected void increateWriteNumber() throws IOException {
