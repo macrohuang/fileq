@@ -123,20 +123,21 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 	}
 
 	@SuppressWarnings("unchecked")
-	private E readObject(int objLen) throws IOException {
+	private E readObject(int objLen) throws IOException, InterruptedException {
 		ByteBuffer objBuffer = ByteBuffer.allocate(objLen);
 		for (int i = 0; i < Constants.MAX_RETRY; i++) {
 			try {
 				readChannel.read(objBuffer, readPosition.get() + Constants.DATA_META_SIZE);
 				return (E) codec.decode(objBuffer.array());
 			} catch (Exception e) {
+				Thread.sleep(10);
 			}
 			objBuffer.clear();
 		}
 		return null;
 	}
 
-	private void checksum(int objLength) throws IOException, CheckSumFailException {
+	private void checksum(int objLength) throws IOException, CheckSumFailException, InterruptedException {
 		ByteBuffer checksumBuffer = ByteBuffer.allocate(Constants.DATA_CHECKSUM_SIZE);
 		for (int i = 0; i < Constants.MAX_RETRY; i++) {
 			try {
@@ -145,6 +146,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 				if (checksumBuffer.getInt() == Constants.DATA_META_SIZE + objLength)
 					return;
 			} catch (Exception e) {
+				Thread.sleep(10);
 			}
 			checksumBuffer.clear();
 		}
