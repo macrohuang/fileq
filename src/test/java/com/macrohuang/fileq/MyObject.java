@@ -15,9 +15,9 @@ public class MyObject implements Serializable, Comparable<MyObject> {
 
 	public MyObject() {
 		age = (int) ((Math.random() * 100));
-		name = "" + System.currentTimeMillis();
-		sex = "" + System.currentTimeMillis();
-		address = "" + System.currentTimeMillis();
+		name = "" + System.nanoTime();
+		sex = "" + System.nanoTime();
+		address = "" + System.nanoTime();
 		tel = "" + (System.currentTimeMillis() / 100000000000L);
 	}
 	public int getAge() {
