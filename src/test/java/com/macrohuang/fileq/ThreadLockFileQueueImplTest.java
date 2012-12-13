@@ -1,9 +1,7 @@
 package com.macrohuang.fileq;
 
-import java.util.Collections;
 import java.util.Random;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -33,9 +31,9 @@ public class ThreadLockFileQueueImplTest {
     }
     
     @Test
-	public void testAdd() throws InterruptedException {
+    public void testAdd() {
 		FileQueue<MyObject> fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
-		for (int i = 0; i < max; i++) {
+        for (int i = 0; i < max; i++) {
             fileQueue.add(new MyObject());
         }
         Assert.assertEquals(max, fileQueue.size());
@@ -58,6 +56,9 @@ public class ThreadLockFileQueueImplTest {
     	executorService.shutdown();
     	executorService.awaitTermination(100, TimeUnit.SECONDS);
     	Assert.assertEquals(max, fileQueue.size());
+		for (int i = 0; i < max / threads; i++) {
+			Assert.assertNotNull(fileQueue.take());
+		}
 		fileQueue.delete();
     }
 
@@ -119,9 +120,9 @@ public class ThreadLockFileQueueImplTest {
 	@Test
 	public void testGetTimeout() throws Exception {
 		final FileQueue<MyObject> fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
-		long start = System.currentTimeMillis();
+		// long start = System.currentTimeMillis();
 		MyObject res = fileQueue.take(1, TimeUnit.SECONDS);
-		Assert.assertEquals(1, (System.currentTimeMillis() - start) / 1000);
+		// Assert.assertEquals(1, (System.currentTimeMillis() - start) / 1000);
 		Assert.assertNull(res);
 		fileQueue.delete();
 	}
@@ -212,7 +213,7 @@ public class ThreadLockFileQueueImplTest {
 
 		System.out.printf("[Read]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
 				(System.currentTimeMillis() - start), times, config.getFileSize());
-		fq.delete();
+
 	}
 
 	@Test
@@ -232,7 +233,6 @@ public class ThreadLockFileQueueImplTest {
 		}
 		System.out.printf("[ReadWrite]Time spend %d ms for %d times. Avg msg length 1024bytes, each data file %d bytes.\n",
 				(System.currentTimeMillis() - start), times, config.getFileSize());
-		fq.delete();
 	}
 
 	@Test
@@ -240,28 +240,25 @@ public class ThreadLockFileQueueImplTest {
 		final int totalTimes = 10000;
 		final int writerCount = 10;
 		final int readerCount = 20;
-
+		ExecutorService writePool = Executors.newFixedThreadPool(writerCount);
+		ExecutorService readPool = Executors.newFixedThreadPool(readerCount);
+		final CountDownLatch startLatch = new CountDownLatch(1);
 		final FileQueue<MyObject> fq = new ThreadLockFileQueueImpl<MyObject>(config);
 		final Set<MyObject> results = new CopyOnWriteArraySet<MyObject>();
 
 		final Set<MyObject> expected = new CopyOnWriteArraySet<MyObject>();
-
-		final CountDownLatch startLatch = new CountDownLatch(1);
-		final CountDownLatch endLatch = new CountDownLatch(writerCount + readerCount);
-
 		for (int i = 0; i < writerCount; i++) {
-			System.out.printf("write thread %d start\n", i);
 			final int ii = i;
-			Thread writerThread = new Thread(new Runnable() {
+			writePool.submit(new Runnable() {
 
 				@Override
 				public void run() {
+					System.out.printf("write thread %d start\n", ii);
 					try {
 						startLatch.await();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-
 					for (int j = 0; j < totalTimes / writerCount; j++) {
 						try {
 							MyObject m = new MyObject();
@@ -275,27 +272,19 @@ public class ThreadLockFileQueueImplTest {
 					System.out.printf("write thread %d finished\n", ii);
 				}
 			});
-			try {
-				writerThread.start();
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally {
-				endLatch.countDown();
-			}
 		}
 		for (int i = 0; i < readerCount; i++) {
-			System.out.printf("read thread %d start\n", i);
 			final int ii = i;
-			Thread readerThread = new Thread(new Runnable() {
+			writePool.submit(new Runnable() {
 
 				@Override
 				public void run() {
+					System.out.printf("read thread %d start\n", ii);
 					try {
 						startLatch.await();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-
 					for (int j = 0; j < totalTimes / readerCount; j++) {
 						try {
 							MyObject m = fq.take();
@@ -309,17 +298,15 @@ public class ThreadLockFileQueueImplTest {
 					System.out.printf("read thread %d finished\n", ii);
 				}
 			});
-			try {
-				readerThread.start();
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally {
-				endLatch.countDown();
-			}
-
 		}
+
 		startLatch.countDown();
-		endLatch.await();
+		readPool.shutdown();
+		writePool.shutdown();
+		readPool.awaitTermination(100, TimeUnit.SECONDS);
+		writePool.awaitTermination(100, TimeUnit.SECONDS);
+		System.out.println(expected.size());
+		System.out.println(results.size());
 		Assert.assertEquals(expected, results);
 	}
 
@@ -328,26 +315,25 @@ public class ThreadLockFileQueueImplTest {
 		final int totalTimes = 10000;
 		final int writerCount = 20;
 		final int readerCount = 10;
-
-		final FileQueue<MyObject> fq = new ThreadLockFileQueueImpl<MyObject>(config);
-		final Set<MyObject> results = Collections.synchronizedSet(new TreeSet<MyObject>());
-
-		final Set<MyObject> expected = Collections.synchronizedSet(new TreeSet<MyObject>());
-
+		ExecutorService writePool = Executors.newFixedThreadPool(writerCount);
+		ExecutorService readPool = Executors.newFixedThreadPool(readerCount);
 		final CountDownLatch startLatch = new CountDownLatch(1);
-		final CountDownLatch endLatch = new CountDownLatch(writerCount + readerCount);
+		final FileQueue<MyObject> fq = new ThreadLockFileQueueImpl<MyObject>(config);
+		final Set<MyObject> results = new CopyOnWriteArraySet<MyObject>();
 
+		final Set<MyObject> expected = new CopyOnWriteArraySet<MyObject>();
 		for (int i = 0; i < writerCount; i++) {
-			Thread writerThread = new Thread(new Runnable() {
+			final int ii = i;
+			writePool.submit(new Runnable() {
 
 				@Override
 				public void run() {
+					System.out.printf("write thread %d start\n", ii);
 					try {
 						startLatch.await();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-
 					for (int j = 0; j < totalTimes / writerCount; j++) {
 						try {
 							MyObject m = new MyObject();
@@ -357,78 +343,72 @@ public class ThreadLockFileQueueImplTest {
 							e.printStackTrace();
 						}
 					}
+					System.out.printf("write thread %d finished\n", ii);
 				}
 			});
-			try {
-				writerThread.start();
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally {
-				endLatch.countDown();
-			}
 		}
-
 		for (int i = 0; i < readerCount; i++) {
-			Thread readerThread = new Thread(new Runnable() {
+			final int ii = i;
+			writePool.submit(new Runnable() {
 
 				@Override
 				public void run() {
+					System.out.printf("read thread %d start\n", ii);
 					try {
 						startLatch.await();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-
 					for (int j = 0; j < totalTimes / readerCount; j++) {
 						try {
 							MyObject m = fq.take();
-							results.add(m);
+							if (m != null) {
+								results.add(m);
+							}
 							Thread.sleep(5);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
 					}
+					System.out.printf("read thread %d finished\n", ii);
 				}
 			});
-
-			try {
-				readerThread.start();
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally {
-				endLatch.countDown();
-			}
 		}
+
 		startLatch.countDown();
-		endLatch.await();
-		Assert.assertTrue(expected.equals(results));
+		readPool.shutdown();
+		writePool.shutdown();
+		readPool.awaitTermination(100, TimeUnit.SECONDS);
+		writePool.awaitTermination(100, TimeUnit.SECONDS);
+		System.out.println(expected.size());
+		System.out.println(results.size());
+		Assert.assertEquals(expected, results);
 	}
 
 	@Test
 	public void concurrentTestWriterReaderWithSameSpeed() throws Exception {
-		final int totalTimes = 100000;
+		final int totalTimes = 10000;
 		final int writerCount = 20;
 		final int readerCount = 20;
-
-		final FileQueue<MyObject> fq = new ThreadLockFileQueueImpl<MyObject>(config);
-		final Set<MyObject> results = Collections.synchronizedSet(new TreeSet<MyObject>());
-
-		final Set<MyObject> expected = Collections.synchronizedSet(new TreeSet<MyObject>());
-
+		ExecutorService writePool = Executors.newFixedThreadPool(writerCount);
+		ExecutorService readPool = Executors.newFixedThreadPool(readerCount);
 		final CountDownLatch startLatch = new CountDownLatch(1);
-		final CountDownLatch endLatch = new CountDownLatch(writerCount + readerCount);
+		final FileQueue<MyObject> fq = new ThreadLockFileQueueImpl<MyObject>(config);
+		final Set<MyObject> results = new CopyOnWriteArraySet<MyObject>();
 
+		final Set<MyObject> expected = new CopyOnWriteArraySet<MyObject>();
 		for (int i = 0; i < writerCount; i++) {
-			Thread writerThread = new Thread(new Runnable() {
+			final int ii = i;
+			writePool.submit(new Runnable() {
 
 				@Override
 				public void run() {
+					System.out.printf("write thread %d start\n", ii);
 					try {
 						startLatch.await();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-
 					for (int j = 0; j < totalTimes / writerCount; j++) {
 						try {
 							MyObject m = new MyObject();
@@ -438,44 +418,45 @@ public class ThreadLockFileQueueImplTest {
 							e.printStackTrace();
 						}
 					}
-
-					endLatch.countDown();
+					System.out.printf("write thread %d finished\n", ii);
 				}
 			});
-
-			writerThread.start();
 		}
-
 		for (int i = 0; i < readerCount; i++) {
-			Thread readerThread = new Thread(new Runnable() {
+			final int ii = i;
+			writePool.submit(new Runnable() {
 
 				@Override
 				public void run() {
+					System.out.printf("read thread %d start\n", ii);
 					try {
 						startLatch.await();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-
 					for (int j = 0; j < totalTimes / readerCount; j++) {
 						try {
 							MyObject m = fq.take();
-							results.add(m);
+							if (m != null) {
+								results.add(m);
+							}
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
 					}
-
-					endLatch.countDown();
+					System.out.printf("read thread %d finished\n", ii);
 				}
 			});
-
-			readerThread.start();
 		}
 
 		startLatch.countDown();
-		endLatch.await();
-		Assert.assertTrue(expected.equals(results));
+		readPool.shutdown();
+		writePool.shutdown();
+		readPool.awaitTermination(100, TimeUnit.SECONDS);
+		writePool.awaitTermination(100, TimeUnit.SECONDS);
+		System.out.println(expected.size());
+		System.out.println(results.size());
+		Assert.assertEquals(expected, results);
 	}
 
 	// @Test
