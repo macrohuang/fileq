@@ -15,6 +15,7 @@ import com.macrohuang.fileq.FileQueue;
 import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.conf.Config;
+import com.macrohuang.fileq.conf.Constants;
 import com.macrohuang.fileq.util.FileUtil;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 
@@ -27,18 +28,21 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	private final AtomicLong readNumber;
 	protected AtomicLong readPosition;
 	protected MappedByteBuffer writeMappedByteBuffer;
-	protected static final int META_SIZE = 16;
-	protected static final int CHECKSUM_SIZE = 16;
-	protected static final int magic = 1314520;
-	protected static final byte[] LEADING_HEAD = NumberBytesConvertUtil.int2ByteArr(magic);
+	// protected static final int META_SIZE = 16;
+	// protected static final int CHECKSUM_SIZE = 16;
+	// protected static final int magic = 1314520;
+	// protected static final byte[] LEADING_HEAD =
+	// NumberBytesConvertUtil.int2ByteArr(magic);
 	private MappedByteBuffer queueMetaBuffer;
+
 	private RandomAccessFile readFile;
 	private RandomAccessFile writeFile;
 	protected FileChannel readChannel;
 	protected FileChannel writeChannel;
 	private FileChannel metaChannel;
 	private RandomAccessFile metaAccessFile;
-	private static final int SIZE_OF_QUEUE_META = 46;
+
+	// private static final int SIZE_OF_QUEUE_META = 46;
 	
 	public enum MetaOffset {
 		WriteNumberName(0), WriteNumber(2), WritePositionName(10), WritePosition(12), ReadNumberName(20), ReadNumber(22), ReadPositionName(30), ReadPosition(
@@ -76,7 +80,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 			boolean isNew = FileUtil.isMetaExists(config);
 			metaAccessFile = new RandomAccessFile(FileUtil.getMetaFile(config), "rw");
 			metaChannel = metaAccessFile.getChannel();
-			queueMetaBuffer = metaChannel.map(MapMode.READ_WRITE, 0, SIZE_OF_QUEUE_META);
+			queueMetaBuffer = metaChannel.map(MapMode.READ_WRITE, 0, Constants.QUEUE_META_SIZE);
 			if (!isNew && !config.isInit()) {
 				writeNumber.set(queueMetaBuffer.getLong(MetaOffset.WriteNumber.offset));
 				writePosition.set(queueMetaBuffer.getLong(MetaOffset.WritePosition.offset));
@@ -179,7 +183,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	@Override
 	public E take(long timeout, TimeUnit unit) throws InterruptedException {
 		if (objectCount.get() == 0) {
-			Thread.sleep(TimeUnit.MILLISECONDS.convert(timeout, unit));
+			unit.sleep(timeout);
 		}
 		if (objectCount.get() == 0) {
 			return null;

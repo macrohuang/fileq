@@ -8,6 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.macrohuang.fileq.FileQueue;
 import com.macrohuang.fileq.conf.Config;
+import com.macrohuang.fileq.conf.Constants;
 import com.macrohuang.fileq.exception.CheckSumFailException;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 
@@ -22,6 +23,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 	private final ReentrantLock writeLock = new ReentrantLock();
 	private final ReentrantLock readLock = new ReentrantLock();
 
+
 	public ThreadLockFileQueueImpl(Config config) {
 		super(config);
 	}
@@ -29,14 +31,14 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 	 @Override
 	public void add(E e) {
 		byte[] objBytes = codec.encode(e);
-		byte[] metaBytes = new byte[META_SIZE];
-		Arrays.fill(metaBytes, (byte) 0xff);
-		System.arraycopy(LEADING_HEAD, 0, metaBytes, 0, 4);
+		byte[] metaBytes = new byte[Constants.DATA_META_SIZE];
+		Arrays.fill(metaBytes, Constants.PADDING);
+		System.arraycopy(Constants.LEADING_HEAD, 0, metaBytes, 0, 4);
 		System.arraycopy(NumberBytesConvertUtil.int2ByteArr(objBytes.length), 0, metaBytes, 4, 4);
-		byte[] checkSum = new byte[CHECKSUM_SIZE];
-		Arrays.fill(checkSum, (byte) 0xff);
-		System.arraycopy(NumberBytesConvertUtil.int2ByteArr(META_SIZE + objBytes.length), 0, checkSum, 0,
-				NumberBytesConvertUtil.int2ByteArr(META_SIZE + objBytes.length).length);
+		byte[] checkSum = new byte[Constants.DATA_CHECKSUM_SIZE];
+		Arrays.fill(checkSum, Constants.PADDING);
+		System.arraycopy(NumberBytesConvertUtil.int2ByteArr(Constants.DATA_META_SIZE + objBytes.length), 0, checkSum, 0,
+				NumberBytesConvertUtil.int2ByteArr(Constants.DATA_META_SIZE + objBytes.length).length);
 		long size = metaBytes.length + objBytes.length + checkSum.length;
 		try {
 			writeLock.lock();
@@ -58,64 +60,117 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		}
 	}
 
+	private boolean checkMeta(ByteBuffer meta) {
+		if (meta.position() != 0)
+			meta.flip();
+		boolean pass = (meta.getInt() == Constants.MAGIC_NUMBER && meta.getInt() > -1 && meta.get() == Constants.PADDING
+				&& meta.get() == Constants.PADDING && meta.get() == Constants.PADDING && meta.get() == Constants.PADDING);
+		meta.flip();
+		return pass;
+	}
+
+	private ByteBuffer getMetaBuffer(long timeout) throws IOException, InterruptedException {
+		long position = readPosition.get();
+		ByteBuffer metaBuffer = ByteBuffer.allocate(Constants.DATA_META_SIZE);
+		readChannel.read(metaBuffer, position);
+		int retry = 0;
+		// data error,maybe the data havn't flush to the disk, try some time, if
+		// still error, then skip
+		while (!checkMeta(metaBuffer) && retry < Constants.MAX_RETRY) {
+			Thread.sleep(10);
+			retry++;
+		}
+		if (retry >= Constants.MAX_RETRY) {
+			if (!readLock.isHeldByCurrentThread())
+				readLock.lock();
+			position = readPosition.incrementAndGet();
+			boolean success = false;
+			while (!success) {
+				if (position >= writePosition.get()) {
+					if (timeout > 0) {
+						Thread.sleep(timeout);
+						if (position >= writePosition.get()) {
+							return null;
+						}
+					} else {
+						while (position >= writePosition.get()) {
+							Thread.sleep(100);
+						}
+					}
+				}
+				if (position >= readChannel.size()) {
+					increateReadNumber();
+				}
+				metaBuffer.clear();
+				readChannel.read(metaBuffer, position);
+				retry = 0;
+				// data error,maybe the data havn't flush to the disk, try some
+				// time, if
+				// still error, then skip
+				while (!checkMeta(metaBuffer) && retry < Constants.MAX_RETRY) {
+					Thread.sleep(10);
+					retry++;
+				}
+				if (retry < Constants.MAX_RETRY) {
+					success = true;
+				} else {
+					position = readPosition.incrementAndGet();
+				}
+			}
+		}
+		metaBuffer.getInt();
+		return metaBuffer;
+	}
+
+	@SuppressWarnings("unchecked")
+	private E readObject(int objLen) throws IOException {
+		ByteBuffer objBuffer = ByteBuffer.allocate(objLen);
+		for (int i = 0; i < Constants.MAX_RETRY; i++) {
+			try {
+				readChannel.read(objBuffer, readPosition.get() + Constants.DATA_META_SIZE);
+				return (E) codec.decode(objBuffer.array());
+			} catch (Exception e) {
+			}
+			objBuffer.clear();
+		}
+		return null;
+	}
+
+	private void checksum(int objLength) throws IOException, CheckSumFailException {
+		ByteBuffer checksumBuffer = ByteBuffer.allocate(Constants.DATA_CHECKSUM_SIZE);
+		for (int i = 0; i < Constants.MAX_RETRY; i++) {
+			try {
+				readChannel.read(checksumBuffer, readPosition.get() + Constants.DATA_META_SIZE + objLength);
+				checksumBuffer.flip();
+				if (checksumBuffer.getInt() == Constants.DATA_META_SIZE + objLength)
+					return;
+			} catch (Exception e) {
+			}
+			checksumBuffer.clear();
+		}
+		throw new CheckSumFailException();
+	}
+
+	private void updateReadInfo(boolean update, int objLength) throws IOException {
+		if (update) {
+			readPosition.addAndGet(Constants.DATA_META_SIZE + objLength + Constants.DATA_CHECKSUM_SIZE);
+			if (readPosition.get() >= readChannel.size()) {
+				increateReadNumber();
+			}
+			updateReadMeta();
+		}
+	}
 	@Override
 	protected E peekInner(boolean remove, long timeout) {
         try {
         	if (remove){
         		readLock.lock();
         	}
-            long position = readPosition.get();
-            ByteBuffer metaBuffer = ByteBuffer.allocate(META_SIZE);
-			readChannel.read(metaBuffer, position);
-			metaBuffer.flip();
-            if (metaBuffer.getInt()!= magic) {// data error,try to read from the right position.
-            	if (!readLock.isHeldByCurrentThread())
-            		readLock.lock();
-            	position = readPosition.incrementAndGet();
-            	boolean success = false;
-            	while(!success){
-					if (position >= writePosition.get()) {
-            			if (timeout>0){
-							Thread.sleep(timeout);
-							if (position >= writePosition.get()) {
-            					return null;
-            				}
-            			}else{
-							while (position >= writePosition.get()) {
-								Thread.sleep(100);
-							}
-            			}
-					}
-					if (position >= readChannel.size()) {
-						increateReadNumber();
-            		}
-            		metaBuffer.clear();
-					readChannel.read(metaBuffer, position);
-					metaBuffer.flip();
-                    if (metaBuffer.getInt()==magic){
-                    	success=true;
-                    }else{
-                    	position=readPosition.incrementAndGet();
-                    }
-            	}
-            }
-            int objLength = metaBuffer.getInt();
-            ByteBuffer objBuffer = ByteBuffer.allocate(objLength);
-			readChannel.read(objBuffer, position + META_SIZE);
-            E obj = codec.decode(objBuffer.array());
-            ByteBuffer checksumBuffer = ByteBuffer.allocate(CHECKSUM_SIZE);
-			readChannel.read(checksumBuffer, position + META_SIZE + objLength);
-            checksumBuffer.flip();
-            if (checksumBuffer.getInt() != META_SIZE + objLength) {// checksum
-                throw new CheckSumFailException();
-            }
-            if (remove){
-				readPosition.addAndGet(META_SIZE + objLength + CHECKSUM_SIZE);
-				if (readPosition.get() >= readChannel.size()) {
-					increateReadNumber();
-				}
-				updateReadMeta();
-            }
+			ByteBuffer metaBuffer = getMetaBuffer(timeout);
+			int objLength = metaBuffer.getInt();
+			E obj = readObject(objLength);
+			checksum(objLength);
+			updateReadInfo(remove, objLength);
             return obj;
         } catch (Exception e) {
             e.printStackTrace();
