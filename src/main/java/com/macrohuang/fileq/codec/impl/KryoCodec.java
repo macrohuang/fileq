@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.macrohuang.fileq.codec.Codec;
+import com.macrohuang.fileq.conf.FileConstants;
 
 /**
  * Kryo序列化编解码器
@@ -17,7 +18,7 @@ public class KryoCodec implements Codec {
 	});
 	
 	private final ThreadLocal<Output> output = ThreadLocal.withInitial(() -> 
-		new Output(1024, -1));
+		new Output(FileConstants.DEFAULT_KRYO_BUFFER_SIZE, FileConstants.UNLIMITED_BUFFER));
 	
 	private final ThreadLocal<Input> input = ThreadLocal.withInitial(Input::new);
 	

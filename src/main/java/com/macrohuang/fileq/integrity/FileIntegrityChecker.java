@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.macrohuang.fileq.conf.Constants;
+import com.macrohuang.fileq.conf.FileConstants;
 
 /**
  * 文件完整性检查器
@@ -212,7 +213,7 @@ public class FileIntegrityChecker {
         
         // 读取数据长度
         int dataLength = metaBuffer.getInt();
-        if (dataLength < 0 || dataLength > 100 * 1024 * 1024) { // 100MB限制
+        if (dataLength < 0 || dataLength > FileConstants.MAX_DATA_BLOCK_SIZE_BYTES) {
             return new DataBlockInfo(position, Constants.DATA_META_SIZE, dataLength, 0, 
                                    ChecksumType.SIMPLE_LENGTH, false, 
                                    "Invalid data length: " + dataLength);

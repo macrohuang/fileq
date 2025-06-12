@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.macrohuang.fileq.FileQueue;
 import com.macrohuang.fileq.conf.Config;
+import com.macrohuang.fileq.conf.MemoryConstants;
 
 /**
  * 内存感知的FileQueue包装器
@@ -28,7 +29,7 @@ public class MemoryAwareFileQueueWrapper<E> implements FileQueue<E> {
     private int operationCount = 0;
     
     public MemoryAwareFileQueueWrapper(FileQueue<E> delegate, Config config) {
-        this(delegate, config, true, 1000);
+        this(delegate, config, true, MemoryConstants.DEFAULT_MEMORY_CHECK_INTERVAL);
     }
     
     public MemoryAwareFileQueueWrapper(FileQueue<E> delegate, Config config, 
@@ -47,8 +48,8 @@ public class MemoryAwareFileQueueWrapper<E> implements FileQueue<E> {
     
     private void setupMemoryMonitoring(Config config) {
         // 根据配置设置内存阈值
-        long fileSizeMB = config.getFileSize() / (1024 * 1024);
-        long memoryThreshold = Math.max(fileSizeMB * 2, 256); // 至少256MB
+        long fileSizeMB = config.getFileSize() / MemoryConstants.BYTES_PER_MB;
+        long memoryThreshold = Math.max(fileSizeMB * 2, MemoryConstants.MIN_MEMORY_THRESHOLD_MB);
         
         memoryMonitor.setMappedMemoryThresholdMB(memoryThreshold);
         memoryMonitor.setHeapUsageThreshold(0.8); // 80%堆内存阈值

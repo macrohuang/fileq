@@ -10,6 +10,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.macrohuang.fileq.conf.MemoryConstants;
+import com.macrohuang.fileq.conf.TimeConstants;
+
 /**
  * 内存映射缓冲区管理器
  * 解决MappedByteBuffer无法显式释放的问题，提供内存管理和监控功能
@@ -313,11 +316,11 @@ public class MappedBufferManager {
         public long getActiveBuffers() { return activeBuffers; }
         
         public String formatMemory(long bytes) {
-            if (bytes < 1024) return bytes + " B";
-            if (bytes == 1024) return "1.0 KB";  // 特殊处理1024字节的情况
-            if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
-            if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
-            return String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+            if (bytes < MemoryConstants.BYTES_PER_KB) return bytes + " B";
+            if (bytes == MemoryConstants.BYTES_PER_KB) return "1.0 KB";  // 特殊处理1024字节的情况
+            if (bytes < MemoryConstants.BYTES_PER_MB) return String.format("%.1f KB", bytes / (double) MemoryConstants.BYTES_PER_KB);
+            if (bytes < MemoryConstants.BYTES_PER_GB) return String.format("%.1f MB", bytes / (double) MemoryConstants.BYTES_PER_MB);
+            return String.format("%.1f GB", bytes / (double) MemoryConstants.BYTES_PER_GB);
         }
         
         @Override
@@ -362,7 +365,7 @@ public class MappedBufferManager {
      * @return 是否超过阈值
      */
     public boolean isMemoryThresholdExceeded(long maxMemoryMB) {
-        long currentMemoryMB = totalMappedMemory.get() / (1024 * 1024);
+        long currentMemoryMB = totalMappedMemory.get() / MemoryConstants.BYTES_PER_MB;
         return currentMemoryMB > maxMemoryMB;
     }
     
@@ -375,7 +378,7 @@ public class MappedBufferManager {
         
         synchronized (managedBuffers) {
             managedBuffers.forEach((buffer, info) -> {
-                long ageMinutes = (System.currentTimeMillis() - info.getCreateTime()) / (60 * 1000);
+                long ageMinutes = (System.currentTimeMillis() - info.getCreateTime()) / TimeConstants.MS_PER_MINUTE;
                 sb.append(String.format("  - Size: %s, Age: %d min, Location: %s, Released: %s\n",
                         new MemoryStatistics(0, info.getSize(), 0, 0, 0).formatMemory(info.getSize()),
                         ageMinutes, info.getLocation(), info.isReleased()));

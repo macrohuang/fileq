@@ -12,6 +12,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.macrohuang.fileq.conf.MemoryConstants;
+import com.macrohuang.fileq.conf.TimeConstants;
+
 /**
  * 内存监控器
  * 监控JVM内存使用情况和MappedByteBuffer内存使用，提供告警功能
@@ -32,15 +35,15 @@ public class MemoryMonitor {
     private final MemoryMXBean memoryBean;
     
     // 配置参数
-    private volatile long mappedMemoryThresholdMB = 512; // 默认512MB阈值
-    private volatile double heapUsageThreshold = 0.85;   // 默认85%堆内存阈值
-    private volatile long monitorIntervalSeconds = 30;   // 默认30秒监控间隔
+    private volatile long mappedMemoryThresholdMB = MemoryConstants.DEFAULT_MAPPED_MEMORY_THRESHOLD_MB;
+    private volatile double heapUsageThreshold = MemoryConstants.DEFAULT_HEAP_USAGE_THRESHOLD;
+    private volatile long monitorIntervalSeconds = TimeConstants.DEFAULT_MONITOR_INTERVAL_SECONDS;
     
     // 状态
     private final AtomicBoolean monitoring = new AtomicBoolean(false);
     private final AtomicLong alertCount = new AtomicLong(0);
     private final AtomicLong lastAlertTime = new AtomicLong(0);
-    private final long alertCooldownMs = 300000; // 5分钟告警冷却期
+    private final long alertCooldownMs = TimeConstants.ALERT_COOLDOWN_MS;
     
     // 统计信息
     private volatile MemorySnapshot lastSnapshot;
@@ -251,7 +254,7 @@ public class MemoryMonitor {
         
         // 等待一会儿让GC完成
         try {
-            Thread.sleep(1000);
+            Thread.sleep(MemoryConstants.MEMORY_CLEANUP_WAIT_MS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

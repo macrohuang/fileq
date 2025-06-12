@@ -26,7 +26,7 @@ public class Config {
     private boolean multiProcessAccess;
 
     public Config() {
-        this.fileSize = 1024 * 1024 * 100;
+        this.fileSize = FileConstants.DEFAULT_FILE_SIZE_BYTES;
         this.backup = true;
         this.basePath = System.getProperty("java.io.tmpdir", System.getProperty("java.io.tmpdir") + File.separator + "fileq");
         this.filePrefix = "fileq_";
