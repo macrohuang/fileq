@@ -1,5 +1,6 @@
 package com.macrohuang.fileq.conf;
 
+import java.io.File;
 import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.concurrent.ConcurrencyStrategy;
@@ -27,7 +28,7 @@ public class Config {
     public Config() {
         this.fileSize = 1024 * 1024 * 100;
         this.backup = true;
-        this.basePath = System.getProperty("java.io.tmpdir", "/temp");
+        this.basePath = System.getProperty("java.io.tmpdir", System.getProperty("java.io.tmpdir") + File.separator + "fileq");
         this.filePrefix = "fileq_";
         this.fileSuffix = ".data";
         this.init = false;

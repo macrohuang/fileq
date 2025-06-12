@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
+import com.macrohuang.fileq.util.TestUtil;
 
 public class ThreadLockFileQueueImplTest {
 	int max = 10000;
@@ -25,7 +26,7 @@ public class ThreadLockFileQueueImplTest {
 
     @BeforeEach
     public void init(){
-		config.setBasePath("d:\\tmp\\filequeue" + (index++));
+		config.setBasePath(TestUtil.getTempPathWithIndex("filequeue", index++));
 		config.setInit(true);
 		config.setFileSize(1024 * 1024 * 100);
     }

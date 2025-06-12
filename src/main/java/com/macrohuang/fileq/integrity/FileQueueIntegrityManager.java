@@ -1,5 +1,6 @@
 package com.macrohuang.fileq.integrity;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
@@ -186,7 +187,7 @@ public class FileQueueIntegrityManager {
      */
     private String getDataFilePath() {
         // 使用与FileUtil相同的路径生成逻辑
-        return config.getBasePath() + "/data/" + config.getFilePrefix() + "0" + config.getFileSuffix();
+        return config.getBasePath() + File.separator + "data" + File.separator + config.getFilePrefix() + "0" + config.getFileSuffix();
     }
     
     /**

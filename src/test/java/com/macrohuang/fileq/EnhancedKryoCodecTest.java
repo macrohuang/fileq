@@ -11,6 +11,7 @@ import com.macrohuang.fileq.codec.impl.EnhancedKryoCodec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
+import com.macrohuang.fileq.util.TestUtil;
 
 /**
  * 测试增强版KryoCodec的功能
@@ -23,7 +24,7 @@ public class EnhancedKryoCodecTest {
     @BeforeEach
     public void init() {
         config = new Config();
-        config.setBasePath("/tmp/filequeue_enhanced_kryo_test_" + (index++));
+        config.setBasePath(TestUtil.getTempPathWithIndex("filequeue_enhanced_kryo_test_", index++));
         config.setInit(true);
         config.setFileSize(1024 * 1024);
     }

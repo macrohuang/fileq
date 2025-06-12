@@ -15,6 +15,7 @@ import com.macrohuang.fileq.exception.FileQueueIOException;
 import com.macrohuang.fileq.exception.InsufficientSpaceException;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
 import com.macrohuang.fileq.util.ResourceManager;
+import com.macrohuang.fileq.util.TestUtil;
 
 /**
  * 测试错误处理和资源管理的改进
@@ -27,7 +28,7 @@ public class ErrorHandlingTest {
     @BeforeEach
     public void init() {
         config = new Config();
-        config.setBasePath("/tmp/filequeue_error_test_" + (index++));
+        config.setBasePath(TestUtil.getTempPathWithIndex("filequeue_error_test_", index++));
         config.setInit(true);
         config.setFileSize(1024 * 1024);
     }
@@ -103,7 +104,7 @@ public class ErrorHandlingTest {
      */
     @Test
     public void testDiskSpaceCheck() {
-        String testPath = "/tmp/disk_space_test";
+        String testPath = TestUtil.getTempPath("disk_space_test");
         
         // 测试正常情况
         boolean hasSpace = ResourceManager.checkDiskSpace(testPath, 1024);
@@ -123,7 +124,7 @@ public class ErrorHandlingTest {
     @Test
     public void testInvalidPath() {
         // 使用无效路径
-        String invalidPath = "/invalid/path/that/does/not/exist";
+        String invalidPath = TestUtil.buildPath("invalid", "path", "that", "does", "not", "exist");
         
         long availableSpace = ResourceManager.getAvailableDiskSpace(invalidPath);
         Assertions.assertTrue(availableSpace <= 0, "Invalid path should return -1 or 0");
@@ -168,7 +169,7 @@ public class ErrorHandlingTest {
     @Test
     public void testFilePermissionHandling() {
         // 尝试在只读目录创建队列（如果可能的话）
-        String readOnlyPath = "/tmp/readonly_test_" + System.currentTimeMillis();
+        String readOnlyPath = TestUtil.getTempPathWithTimestamp("readonly_test_");
         File readOnlyDir = new File(readOnlyPath);
         
         try {
@@ -176,7 +177,7 @@ public class ErrorHandlingTest {
                 readOnlyDir.setReadOnly();
                 
                 Config readOnlyConfig = new Config();
-                readOnlyConfig.setBasePath(readOnlyPath + "/queue");
+                readOnlyConfig.setBasePath(readOnlyPath + File.separator + "queue");
                 readOnlyConfig.setInit(true);
                 readOnlyConfig.setFileSize(1024);
                 
@@ -206,7 +207,7 @@ public class ErrorHandlingTest {
     @Test
     public void testLargeFileHandling() {
         Config largeConfig = new Config();
-        largeConfig.setBasePath("/tmp/large_file_test_" + System.currentTimeMillis());
+        largeConfig.setBasePath(TestUtil.getTempPathWithTimestamp("large_file_test_"));
         largeConfig.setInit(true);
         largeConfig.setFileSize(1024 * 1024 * 10); // 10MB
         

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
+import com.macrohuang.fileq.util.TestUtil;
 
 /**
  * 专门测试并发安全性的测试类
@@ -24,7 +25,7 @@ public class ConcurrencySafetyTest {
     @BeforeEach
     public void init() {
         config = new Config();
-        config.setBasePath("/tmp/filequeue_concurrency_test_" + (index++));
+        config.setBasePath(TestUtil.getTempPathWithIndex("filequeue_concurrency_test_", index++));
         config.setInit(true);
         config.setFileSize(1024 * 1024 * 10);
     }
