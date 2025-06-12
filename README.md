@@ -14,7 +14,51 @@ A file base queue, using file channel, mmap and less meta info.
 
 ## Performance
 
-In my PC, Intel i5 3.10GHz, 4G Ram, Win7 Professional 64bit, it can reach up to 500,000 times/second of 1K data write and 50,000 times/second of 1K data read.
+### 测试环境
+
+- **CPU**：Apple M3
+- **内存**：24GB
+- **操作系统**：macOS 15.5
+- **JDK版本**：Java 17
+- **磁盘**：SSD
+
+### 测试方法
+
+- 顺序写入：1KB消息，单线程持续写入10万次，统计总耗时与平均吞吐量
+- 顺序读取：1KB消息，单线程持续读取10万次，统计总耗时与平均吞吐量
+- 并发策略对比：1000次操作，分别测试ReadWriteLock、ReentrantLock、SingleThread三种模式
+- 编解码器对比：对比KryoCodec与EnhancedKryoCodec的序列化/反序列化性能
+
+### 最新性能数据
+
+| 场景         | 吞吐量（写） | 吞吐量（读） | 备注                |
+|--------------|-------------|-------------|---------------------|
+| 单线程       | 14,170 ops/s| 9,067 ops/s | 1KB消息，SSD        |
+
+- [Write]Time spend 7060 ms for 100000 times. Avg msg length 1024bytes
+- [Read]Time spend 11025 ms for 100000 times. Avg msg length 1024bytes
+
+#### 并发策略对比（1000次操作，EnhancedFileQueueImpl）
+| 并发策略         | 1000次操作耗时 | 备注                |
+|------------------|---------------|---------------------|
+| ReadWriteLock    | 41.04 ms      | 推荐，读多写少场景  |
+| ReentrantLock    | 591.55 ms     | 平衡读写场景        |
+| SingleThread     | 378.07 ms     | 单线程极致性能      |
+
+#### 编解码器对比
+| 编解码器         | 序列化时间 | 反序列化时间 |
+|------------------|------------|--------------|
+| KryoCodec        | 17,039 μs  | 4,929 μs     |
+| EnhancedKryoCodec|    552 μs  |    48 μs     |
+
+- EnhancedKryoCodec序列化速度提升约97%，反序列化提升约99%
+
+### 结论与建议
+
+- FileQ在Apple M3+SSD+Java 17环境下，单线程顺序写入/读取性能分别可达1.4万/0.9万ops/s。
+- EnhancedFileQueueImpl在并发场景下表现优异，ReadWriteLock模式强烈推荐。
+- EnhancedKryoCodec极大提升了序列化性能，强烈推荐。
+- 性能数据会随硬件、JVM参数、磁盘类型等变化，建议在目标环境下自行基准测试。
 
 ## Requirements
 
@@ -25,7 +69,7 @@ In my PC, Intel i5 3.10GHz, 4G Ram, Win7 Professional 64bit, it can reach up to 
 
 ```java
 import com.macrohuang.fileq.FileQueue;
-import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
+import com.macrohuang.fileq.impl.EnhancedFileQueueImpl;
 import com.macrohuang.fileq.conf.Config;
 
 // Create configuration
@@ -34,7 +78,7 @@ config.setBasePath("/tmp/myqueue");
 config.setFileSize(1024 * 1024 * 100); // 100MB per file
 
 // Create queue
-FileQueue<String> queue = new ThreadLockFileQueueImpl<>(config);
+FileQueue<String> queue = new EnhancedFileQueueImpl<>(config);
 
 // Add items
 queue.add("Hello");
