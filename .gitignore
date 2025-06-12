@@ -7,4 +7,34 @@
 .classpath
 .project
 .settings/
+
+# Build directories
 target/
+build/
+
+# Test output and logs
+*.log
+logs/
+test-results/
+surefire-reports/
+
+# IDE files
+.idea/
+*.iml
+*.iws
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Test data directories (exclude Windows-style temp paths)
+d:\tmp\*/
+/tmp/filequeue*/
+
