@@ -5,8 +5,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.DefaultObjectCodec;
@@ -19,7 +19,7 @@ public class CodecTest {
 	private byte[][] objectBytes;
 	private ExecutorService executors = Executors.newFixedThreadPool(MAX_THREADS);
 
-	@Before
+	@BeforeEach
 	public void init() {
 		objectBytes = new byte[MAX_OBJS][];
 	}
@@ -70,24 +70,24 @@ public class CodecTest {
 
 	@Test
 	public void testDefaultSerializeEncode() {
-		encode(new DefaultObjectCodec());
+		encode(new DefaultObjectCodec(MyObject.class));
 	}
 
 	@Test
 	public void testDefaultSerializeDecode() {
-		Codec codec = new DefaultObjectCodec();
+		Codec codec = new DefaultObjectCodec(MyObject.class);
 		encode(codec);
 		decode(codec);
 	}
 
 	@Test
 	public void testDefaultSerializeEncodeMultThreads() throws InterruptedException {
-		encodeMultThread(new DefaultObjectCodec());
+		encodeMultThread(new DefaultObjectCodec(MyObject.class));
 	}
 
 	@Test
 	public void testDefaultSerializeDecodeMultThreads() throws InterruptedException {
-		final Codec codec = new DefaultObjectCodec();
+		final Codec codec = new DefaultObjectCodec(MyObject.class);
 		encode(codec);
 		decodeMultThread(codec);
 	}

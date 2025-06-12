@@ -9,9 +9,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
@@ -23,7 +23,7 @@ public class ThreadLockFileQueueImplTest {
 	Config config = new Config();
 	static int index = 0;
 
-    @Before
+    @BeforeEach
     public void init(){
 		config.setBasePath("d:\\tmp\\filequeue" + (index++));
 		config.setInit(true);
@@ -36,7 +36,7 @@ public class ThreadLockFileQueueImplTest {
         for (int i = 0; i < max; i++) {
             fileQueue.add(new MyObject());
         }
-        Assert.assertEquals(max, fileQueue.size());
+        Assertions.assertEquals(max, fileQueue.size());
 		fileQueue.delete();
     }
 
@@ -55,9 +55,9 @@ public class ThreadLockFileQueueImplTest {
     	}
     	executorService.shutdown();
     	executorService.awaitTermination(100, TimeUnit.SECONDS);
-    	Assert.assertEquals(max, fileQueue.size());
+    	Assertions.assertEquals(max, fileQueue.size());
 		for (int i = 0; i < max / threads; i++) {
-			Assert.assertNotNull(fileQueue.take());
+			Assertions.assertNotNull(fileQueue.take());
 		}
 		fileQueue.delete();
     }
@@ -68,9 +68,9 @@ public class ThreadLockFileQueueImplTest {
         fileQueue.add(new MyObject());
         MyObject myObject = fileQueue.peek();
         MyObject myObject2 = fileQueue.peek();
-        Assert.assertNotNull(myObject);
-        Assert.assertNotNull(myObject2);
-        org.junit.Assert.assertEquals(myObject, myObject2);
+        Assertions.assertNotNull(myObject);
+        Assertions.assertNotNull(myObject2);
+        Assertions.assertEquals(myObject, myObject2);
 		fileQueue.delete();
     }
 
@@ -78,13 +78,13 @@ public class ThreadLockFileQueueImplTest {
 	public void testBlockingPeek() throws InterruptedException {
 		final FileQueue<MyObject> fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
 		MyObject myObject = fileQueue.peek(1, TimeUnit.SECONDS);
-		Assert.assertNull(myObject);
+		Assertions.assertNull(myObject);
 		fileQueue.add(new MyObject());
 		MyObject myObject2 = fileQueue.peek();
 		myObject = fileQueue.peek(1, TimeUnit.SECONDS);
-		Assert.assertNotNull(myObject);
-		Assert.assertNotNull(myObject2);
-		org.junit.Assert.assertEquals(myObject, myObject2);
+		Assertions.assertNotNull(myObject);
+		Assertions.assertNotNull(myObject2);
+		Assertions.assertEquals(myObject, myObject2);
 		fileQueue.delete();
 	}
 
@@ -99,7 +99,7 @@ public class ThreadLockFileQueueImplTest {
 		}
 		System.out.println("Add finished, queue size: " + fq.size());
 		for (int i = 0; i < times; i++) {
-			Assert.assertEquals(i, fq.take().intValue());
+			Assertions.assertEquals(i, fq.take().intValue());
 		}
 		fq.delete();
 	}
@@ -122,8 +122,8 @@ public class ThreadLockFileQueueImplTest {
 		final FileQueue<MyObject> fileQueue = new ThreadLockFileQueueImpl<MyObject>(config);
 		// long start = System.currentTimeMillis();
 		MyObject res = fileQueue.take(1, TimeUnit.SECONDS);
-		// Assert.assertEquals(1, (System.currentTimeMillis() - start) / 1000);
-		Assert.assertNull(res);
+		// Assertions.assertEquals(1, (System.currentTimeMillis() - start) / 1000);
+		Assertions.assertNull(res);
 		fileQueue.delete();
 	}
 
@@ -136,14 +136,14 @@ public class ThreadLockFileQueueImplTest {
 		}
 
 		for (int i = 0; i < times / 2; i++) {
-			Assert.assertEquals(Integer.valueOf(i), fq.take());
+			Assertions.assertEquals(Integer.valueOf(i), fq.take());
 		}
 		fq.close();
 
 		config.setInit(false);
 		fq = new ThreadLockFileQueueImpl<Integer>(config);
 		for (int i = times / 2; i < times; i++) {
-			Assert.assertEquals(Integer.valueOf(i), fq.take());
+			Assertions.assertEquals(Integer.valueOf(i), fq.take());
 		}
 		fq.delete();
 	}
@@ -158,7 +158,7 @@ public class ThreadLockFileQueueImplTest {
 		}
 
 		for (int i = 0; i < times / 2; i++) {
-			Assert.assertEquals(Integer.valueOf(i), fq.take());
+			Assertions.assertEquals(Integer.valueOf(i), fq.take());
 		}
 
 		fq.close();
@@ -167,7 +167,7 @@ public class ThreadLockFileQueueImplTest {
 		config.setInit(false);
 		fq = new ThreadLockFileQueueImpl<Integer>(config);
 		for (int i = times / 2; i < times; i++) {
-			Assert.assertEquals(Integer.valueOf(i), fq.take());
+			Assertions.assertEquals(Integer.valueOf(i), fq.take());
 		}
 		fq.delete();
 	}
@@ -307,7 +307,7 @@ public class ThreadLockFileQueueImplTest {
 		writePool.awaitTermination(100, TimeUnit.SECONDS);
 		System.out.println(expected.size());
 		System.out.println(results.size());
-		Assert.assertEquals(expected, results);
+		Assertions.assertEquals(expected, results);
 	}
 
 	@Test
@@ -382,7 +382,7 @@ public class ThreadLockFileQueueImplTest {
 		writePool.awaitTermination(100, TimeUnit.SECONDS);
 		System.out.println(expected.size());
 		System.out.println(results.size());
-		Assert.assertEquals(expected, results);
+		Assertions.assertEquals(expected, results);
 	}
 
 	@Test
@@ -456,7 +456,7 @@ public class ThreadLockFileQueueImplTest {
 		writePool.awaitTermination(100, TimeUnit.SECONDS);
 		System.out.println(expected.size());
 		System.out.println(results.size());
-		Assert.assertEquals(expected, results);
+		Assertions.assertEquals(expected, results);
 	}
 
 	// @Test

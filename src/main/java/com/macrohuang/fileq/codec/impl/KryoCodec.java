@@ -6,52 +6,43 @@ import com.esotericsoftware.kryo.io.Output;
 import com.macrohuang.fileq.codec.Codec;
 
 /**
- * 
+ * Kryo序列化编解码器
  * @author macro
- * 
- * @param <E>
  */
 public class KryoCodec implements Codec {
-	private ThreadLocal<Kryo> serializer = new ThreadLocal<Kryo>();
-	private ThreadLocal<Output> output = new ThreadLocal<Output>();
-	private ThreadLocal<Input> input = new ThreadLocal<Input>();
+	private final ThreadLocal<Kryo> serializer = ThreadLocal.withInitial(() -> {
+		var kryo = new Kryo();
+		kryo.setRegistrationRequired(false);
+		return kryo;
+	});
+	
+	private final ThreadLocal<Output> output = ThreadLocal.withInitial(() -> 
+		new Output(1024, -1));
+	
+	private final ThreadLocal<Input> input = ThreadLocal.withInitial(Input::new);
+	
 	private Class<?> typeClass;
+
 	@Override
 	public byte[] encode(Object element) {
-		if (typeClass==null){//guess the type class.
+		if (typeClass == null) {
 			typeClass = element.getClass();
 		}
-		Kryo kryo = serializer.get();
-		Output output = this.output.get();
-		if (kryo == null) {
-			kryo = new Kryo();
-			kryo.setRegistrationRequired(false);
-			serializer.set(kryo);
-		}
-		if (output == null) {
-			output = new Output(1024, -1);
-			this.output.set(output);
-		}
-		output.clear();
+		var kryo = serializer.get();
+		var output = this.output.get();
+		
+		output.reset();
 		kryo.writeClassAndObject(output, element);
-        return output.toBytes();
-    }
+		return output.toBytes();
+	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> T decode(byte[] bytes) {
-		Kryo kryo = serializer.get();
-		Input input = this.input.get();
-		if (kryo == null) {
-			kryo = new Kryo();
-			kryo.setRegistrationRequired(false);
-			serializer.set(kryo);
-		}
-		if (input == null) {
-			input = new Input();
-			this.input.set(input);
-		}
-        input.setBuffer(bytes);
+		var kryo = serializer.get();
+		var input = this.input.get();
+		
+		input.setBuffer(bytes);
 		return (T) kryo.readClassAndObject(input);
-    }
+	}
 }

@@ -17,33 +17,33 @@ import com.macrohuang.fileq.codec.Codec;
 public class DefaultObjectCodec implements Codec {
 	// private static final Logger log =
 	// LoggerFactory.getLogger(DefaultObjectCodec.class);
-	private Class<?> type;
-    @Override
-	public byte[] encode(Object element) {
-    	if (type ==null){
-    		this.type = element.getClass();
-    	}
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try {
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(element);
-        } catch (IOException e) {
-			// log.warn("Encode object({}) fail", element);
-            return new byte[0];
-        }
-        return bos.toByteArray();
-    }
+	private final Class<?> type;
 
-    @Override
+	public DefaultObjectCodec(Class<?> type) {
+		this.type = type;
+	}
+
+	@Override
+	public byte[] encode(Object element) {
+		try (var bos = new ByteArrayOutputStream();
+			 var oos = new ObjectOutputStream(bos)) {
+			oos.writeObject(element);
+			return bos.toByteArray();
+		} catch (IOException e) {
+			// log.warn("Encode object({}) fail", element);
+			return new byte[0];
+		}
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public <T> T decode(byte[] bytes) {
-        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-        try {
-            ObjectInputStream ois = new ObjectInputStream(bis);
-            return (T) ois.readObject();
-        } catch (Exception e) {
+		try (var bis = new ByteArrayInputStream(bytes);
+			 var ois = new ObjectInputStream(bis)) {
+			return (T) ois.readObject();
+		} catch (Exception e) {
 			// log.warn("Decode object({}) fail", Arrays.toString(bytes));
-            return null;
-        }
-    }
+			return null;
+		}
+	}
 }
