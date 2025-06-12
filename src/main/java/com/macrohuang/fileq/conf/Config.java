@@ -2,6 +2,7 @@ package com.macrohuang.fileq.conf;
 
 import com.macrohuang.fileq.codec.Codec;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
+import com.macrohuang.fileq.concurrent.ConcurrencyStrategy;
 
 public class Config {
     public static final String META_FILE_NAME = ".meta";
@@ -15,6 +16,13 @@ public class Config {
     private String fileSuffix;
     private boolean init;
     private Codec codec;
+    
+    // 并发策略配置
+    private ConcurrencyStrategy.AccessMode concurrencyMode;
+    private boolean fairLock;
+    private int expectedReadThreads;
+    private int expectedWriteThreads;
+    private boolean multiProcessAccess;
 
     public Config() {
         this.fileSize = 1024 * 1024 * 100;
@@ -24,6 +32,13 @@ public class Config {
         this.fileSuffix = ".data";
         this.init = false;
         this.codec = new KryoCodec();
+        
+        // 并发策略默认配置
+        this.concurrencyMode = ConcurrencyStrategy.AccessMode.REENTRANT_LOCK;
+        this.fairLock = false;
+        this.expectedReadThreads = 1;
+        this.expectedWriteThreads = 1;
+        this.multiProcessAccess = false;
     }
 
     public Config(int fileSize, boolean backup, String basePath, String filePrefix, 
@@ -93,5 +108,46 @@ public class Config {
 
     public void setCodec(Codec codec) {
         this.codec = codec;
+    }
+    
+    // 并发策略配置的 Getters 和 Setters
+    public ConcurrencyStrategy.AccessMode getConcurrencyMode() {
+        return concurrencyMode;
+    }
+    
+    public void setConcurrencyMode(ConcurrencyStrategy.AccessMode concurrencyMode) {
+        this.concurrencyMode = concurrencyMode;
+    }
+    
+    public boolean isFairLock() {
+        return fairLock;
+    }
+    
+    public void setFairLock(boolean fairLock) {
+        this.fairLock = fairLock;
+    }
+    
+    public int getExpectedReadThreads() {
+        return expectedReadThreads;
+    }
+    
+    public void setExpectedReadThreads(int expectedReadThreads) {
+        this.expectedReadThreads = expectedReadThreads;
+    }
+    
+    public int getExpectedWriteThreads() {
+        return expectedWriteThreads;
+    }
+    
+    public void setExpectedWriteThreads(int expectedWriteThreads) {
+        this.expectedWriteThreads = expectedWriteThreads;
+    }
+    
+    public boolean isMultiProcessAccess() {
+        return multiProcessAccess;
+    }
+    
+    public void setMultiProcessAccess(boolean multiProcessAccess) {
+        this.multiProcessAccess = multiProcessAccess;
     }
 }
