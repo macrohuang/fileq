@@ -35,6 +35,6 @@ Thumbs.db
 *.swo
 
 # Test data directories (exclude Windows-style temp paths)
-d:\tmp\*/
+d:\tmp\**
 /tmp/filequeue*/
 
