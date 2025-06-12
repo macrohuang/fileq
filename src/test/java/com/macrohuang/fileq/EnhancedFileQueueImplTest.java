@@ -15,6 +15,7 @@ import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.concurrent.ConcurrencyStrategy;
 import com.macrohuang.fileq.concurrent.LockStatistics;
 import com.macrohuang.fileq.impl.EnhancedFileQueueImpl;
+import com.macrohuang.fileq.util.TestUtil;
 
 /**
  * 增强FileQueue实现的测试类
@@ -35,7 +36,7 @@ public class EnhancedFileQueueImplTest {
     
     @AfterEach
     public void cleanup() {
-        // 清理会在队列的delete()方法中处理
+        TestUtil.deleteTempDir(config.getBasePath());
     }
     
     @Test

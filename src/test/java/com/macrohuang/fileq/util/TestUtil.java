@@ -85,4 +85,15 @@ public class TestUtil {
         }
         return true;
     }
+    
+    /**
+     * 删除指定路径下的所有文件和目录（递归）
+     * @param path 需要删除的目录或文件路径
+     */
+    public static void deleteTempDir(String path) {
+        File dir = new File(path);
+        if (dir.exists()) {
+            FileUtil.delete(dir);
+        }
+    }
 }
