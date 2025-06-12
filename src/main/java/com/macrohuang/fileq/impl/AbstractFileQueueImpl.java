@@ -122,7 +122,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	@Override
 	public boolean remain() {
-		return readPosition == writePosition;
+		return readPosition.get() != writePosition.get();
 	}
 
 	@Override
@@ -168,8 +168,10 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 
 	@Override
 	public void clear() {
-		objectCount.getAndSet(0);
-		readPosition.getAndSet(writePosition.get());
+		// 获取当前写位置，然后原子性地更新读位置和对象计数
+		long currentWritePosition = writePosition.get();
+		readPosition.set(currentWritePosition);
+		objectCount.set(0);
 	}
 
 	@Override
@@ -252,13 +254,17 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	}
 
 	protected final void updateWriteMeta() {
+		// 先更新计数器，然后更新元数据文件
+		int newCount = objectCount.incrementAndGet();
 		queueMetaBuffer.putLong(MetaOffset.WritePosition.offset, writePosition.get());
-		queueMetaBuffer.putInt(MetaOffset.ObjectCount.offset, objectCount.incrementAndGet());
+		queueMetaBuffer.putInt(MetaOffset.ObjectCount.offset, newCount);
 	}
 
 	protected final void updateReadMeta() {
+		// 先更新计数器，然后更新元数据文件
+		int newCount = objectCount.decrementAndGet();
 		queueMetaBuffer.putLong(MetaOffset.ReadPosition.offset, readPosition.get());
-		queueMetaBuffer.putInt(MetaOffset.ObjectCount.offset, objectCount.decrementAndGet());
+		queueMetaBuffer.putInt(MetaOffset.ObjectCount.offset, newCount);
 	}
 
 	protected final int getFileSize() {

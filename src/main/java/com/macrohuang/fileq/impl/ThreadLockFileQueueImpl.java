@@ -169,6 +169,9 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
         		readLock.lock();
         	}
 			ByteBuffer metaBuffer = getMetaBuffer(timeout);
+			if (metaBuffer == null) {
+				return null; // 超时或没有数据可读
+			}
 			int objLength = metaBuffer.getInt();
 			E obj = readObject(objLength);
 			checksum(objLength);
