@@ -1,6 +1,7 @@
 package com.macrohuang.fileq.concurrent;
 
 import java.util.concurrent.atomic.AtomicLong;
+import com.macrohuang.fileq.conf.TimeConstants;
 
 /**
  * 锁竞争统计信息
@@ -162,10 +163,10 @@ public class LockStatistics {
             "contentionRate=%.2f%%}",
             readLockAcquisitions.get(),
             writeLockAcquisitions.get(),
-            getAverageReadLockWaitTime() / 1000.0,
-            getAverageWriteLockWaitTime() / 1000.0,
-            getAverageReadLockHoldTime() / 1000.0,
-            getAverageWriteLockHoldTime() / 1000.0,
+            getAverageReadLockWaitTime() / TimeConstants.NANOSECONDS_PER_MICROSECOND,
+            getAverageWriteLockWaitTime() / TimeConstants.NANOSECONDS_PER_MICROSECOND,
+            getAverageReadLockHoldTime() / TimeConstants.NANOSECONDS_PER_MICROSECOND,
+            getAverageWriteLockHoldTime() / TimeConstants.NANOSECONDS_PER_MICROSECOND,
             getLockContentionRate() * 100.0
         );
     }

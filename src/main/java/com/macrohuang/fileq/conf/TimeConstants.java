@@ -37,6 +37,16 @@ public class TimeConstants {
      */
     public static final long MS_PER_SECOND = 1000;
     
+    /**
+     * 纳秒到微秒的转换因子
+     */
+    public static final double NANOSECONDS_PER_MICROSECOND = 1000.0;
+    
+    /**
+     * 默认完整性检查间隔
+     */
+    public static final long DEFAULT_INTEGRITY_CHECK_INTERVAL = 1000;
+    
     private TimeConstants() {
         // 防止实例化
     }

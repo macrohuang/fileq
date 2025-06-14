@@ -49,6 +49,21 @@ public class FileConstants {
      */
     public static final int SIZE_10MB = 10 * 1024 * 1024;
     
+    /**
+     * 整数字节大小
+     */
+    public static final int INTEGER_BYTE_SIZE = 4;
+    
+    /**
+     * 增强校验和类型偏移量
+     */
+    public static final int ENHANCED_CHECKSUM_TYPE_OFFSET = 1;
+    
+    /**
+     * 增强校验和最小大小
+     */
+    public static final int ENHANCED_CHECKSUM_MIN_SIZE = 5;
+    
     private FileConstants() {
         // 防止实例化
     }

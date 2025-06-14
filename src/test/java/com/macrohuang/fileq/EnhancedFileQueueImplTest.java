@@ -29,7 +29,7 @@ public class EnhancedFileQueueImplTest {
     @BeforeEach
     public void init() {
         config = new Config();
-        config.setBasePath("/tmp/enhanced_filequeue_test_" + (index++));
+        config.setBasePath(TestUtil.getTempPathWithIndex("enhanced_filequeue_test_", index++));
         config.setInit(true);
         config.setFileSize(1024 * 1024 * 10);
     }
@@ -286,7 +286,7 @@ public class EnhancedFileQueueImplTest {
     
     private long testStrategyPerformance(ConcurrencyStrategy.AccessMode mode, int operations) {
         Config testConfig = new Config();
-        testConfig.setBasePath("/tmp/perf_test_" + mode.name().toLowerCase() + "_" + (index++));
+        testConfig.setBasePath(TestUtil.getTempPath("perf_test_" + mode.name().toLowerCase() + "_" + (index++)));
         testConfig.setInit(true);
         testConfig.setFileSize(1024 * 1024 * 10);
         testConfig.setConcurrencyMode(mode);

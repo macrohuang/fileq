@@ -75,12 +75,12 @@ public class MemoryMonitor {
         public MemorySnapshot(MemoryUsage heapUsage, MemoryUsage nonHeapUsage, 
                             MappedBufferManager.MemoryStatistics bufferStats) {
             this.timestamp = System.currentTimeMillis();
-            this.heapUsedMB = heapUsage.getUsed() / (1024 * 1024);
-            this.heapMaxMB = heapUsage.getMax() / (1024 * 1024);
+            this.heapUsedMB = heapUsage.getUsed() / MemoryConstants.BYTES_PER_MB;
+            this.heapMaxMB = heapUsage.getMax() / MemoryConstants.BYTES_PER_MB;
             this.heapUsagePercent = (double) heapUsage.getUsed() / heapUsage.getMax();
-            this.nonHeapUsedMB = nonHeapUsage.getUsed() / (1024 * 1024);
+            this.nonHeapUsedMB = nonHeapUsage.getUsed() / MemoryConstants.BYTES_PER_MB;
             this.mappedBufferCount = bufferStats.getActiveBuffers();
-            this.mappedMemoryMB = bufferStats.getTotalMappedMemory() / (1024 * 1024);
+            this.mappedMemoryMB = bufferStats.getTotalMappedMemory() / MemoryConstants.BYTES_PER_MB;
             this.successfulUnmaps = bufferStats.getSuccessfulUnmaps();
             this.failedUnmaps = bufferStats.getFailedUnmaps();
         }

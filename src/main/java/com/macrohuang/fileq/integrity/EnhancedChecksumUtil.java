@@ -5,6 +5,7 @@ import java.util.zip.Adler32;
 import java.util.zip.CRC32;
 
 import com.macrohuang.fileq.conf.Constants;
+import com.macrohuang.fileq.conf.FileConstants;
 import com.macrohuang.fileq.integrity.FileIntegrityChecker.ChecksumType;
 
 /**
@@ -40,7 +41,7 @@ public class EnhancedChecksumUtil {
             result[0] = (byte) type.getCode();
             
             // 接下来4个字节存储校验值
-            ByteBuffer buffer = ByteBuffer.allocate(4);
+            ByteBuffer buffer = ByteBuffer.allocate(FileConstants.INTEGER_BYTE_SIZE);
             buffer.putInt(value);
             System.arraycopy(buffer.array(), 0, result, 1, 4);
             
@@ -82,7 +83,7 @@ public class EnhancedChecksumUtil {
      * @return 是否验证通过
      */
     public static boolean verifyChecksum(byte[] data, byte[] checksumBytes) {
-        if (checksumBytes.length < 5) {
+        if (checksumBytes.length < FileConstants.ENHANCED_CHECKSUM_MIN_SIZE) {
             // 兼容旧格式：直接比较简单校验和
             return verifyLegacyChecksum(data, checksumBytes);
         }
@@ -164,7 +165,7 @@ public class EnhancedChecksumUtil {
      * 从校验和字节中解析校验值
      */
     public static int parseChecksumValue(byte[] checksumBytes) {
-        if (checksumBytes.length < 5) {
+        if (checksumBytes.length < FileConstants.ENHANCED_CHECKSUM_MIN_SIZE) {
             // 兼容旧格式
             if (checksumBytes.length >= 4) {
                 ByteBuffer buffer = ByteBuffer.wrap(checksumBytes);
@@ -184,10 +185,10 @@ public class EnhancedChecksumUtil {
      * 根据数据大小和性能要求选择最适合的校验算法
      */
     public static ChecksumType getRecommendedChecksumType(int dataSize) {
-        if (dataSize < 1024) {
+        if (dataSize < FileConstants.SIZE_1KB) {
             // 小数据使用CRC32，精度高
             return ChecksumType.CRC32;
-        } else if (dataSize < 1024 * 1024) {
+        } else if (dataSize < FileConstants.SIZE_1MB) {
             // 中等数据使用Adler32，速度快
             return ChecksumType.ADLER32;
         } else {

@@ -15,6 +15,7 @@ import com.macrohuang.fileq.conf.Constants;
 import com.macrohuang.fileq.exception.CheckSumFailException;
 import com.macrohuang.fileq.exception.FileQueueIOException;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
+import com.macrohuang.fileq.conf.TimeConstants;
 
 /**
  * Thread-safe FileQueue implementation using ReentrantLock
@@ -119,7 +120,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 		int retry = 0;
 		// Data error, maybe the data hasn't flushed to the disk, try some time, if still error, then skip
 		while (!checkMeta(metaBuffer) && retry < Constants.MAX_RETRY) {
-			Thread.sleep(10);
+			Thread.sleep(TimeConstants.RETRY_INTERVAL_MS);
 			retry++;
 			metaBuffer.clear();
 			try {
@@ -147,7 +148,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 						}
 					} else {
 						while (position >= writePosition.get()) {
-							Thread.sleep(100);
+							Thread.sleep(TimeConstants.QUEUE_WAIT_INTERVAL_MS);
 						}
 					}
 				}
@@ -168,7 +169,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 				retry = 0;
 				// Data error, maybe the data hasn't flushed to the disk, try some time, if still error, then skip
 				while (!checkMeta(metaBuffer) && retry < Constants.MAX_RETRY) {
-					Thread.sleep(10);
+					Thread.sleep(TimeConstants.RETRY_INTERVAL_MS);
 					retry++;
 					metaBuffer.clear();
 					try {
@@ -209,7 +210,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 				if (i == Constants.MAX_RETRY - 1) {
 					logger.error("Failed to read object after {} retries", Constants.MAX_RETRY, e);
 				}
-				Thread.sleep(10);
+				Thread.sleep(TimeConstants.RETRY_INTERVAL_MS);
 			}
 			objBuffer.clear();
 		}
@@ -232,7 +233,7 @@ public class ThreadLockFileQueueImpl<E> extends AbstractFileQueueImpl<E>
 				logger.warn("Checksum mismatch, retry {}/{}", i + 1, Constants.MAX_RETRY);
 			} catch (Exception e) {
 				logger.warn("Failed to read checksum, retry {}/{}: {}", i + 1, Constants.MAX_RETRY, e.getMessage());
-				Thread.sleep(10);
+				Thread.sleep(TimeConstants.RETRY_INTERVAL_MS);
 			}
 			checksumBuffer.clear();
 		}

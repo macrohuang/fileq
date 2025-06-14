@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import com.macrohuang.fileq.codec.impl.KryoCodec;
 import com.macrohuang.fileq.conf.Config;
 import com.macrohuang.fileq.impl.ThreadLockFileQueueImpl;
+import com.macrohuang.fileq.util.TestUtil;
 
 /**
  * 测试Kryo序列化Arrays.asList()的已知问题
@@ -22,7 +23,7 @@ public class KryoSerializationBugTest {
     @BeforeEach
     public void init() {
         config = new Config();
-        config.setBasePath("/tmp/filequeue_kryo_test_" + (index++));
+        config.setBasePath(TestUtil.getTempPathWithIndex("filequeue_kryo_test_", index++));
         config.setInit(true);
         config.setFileSize(1024 * 1024);
     }

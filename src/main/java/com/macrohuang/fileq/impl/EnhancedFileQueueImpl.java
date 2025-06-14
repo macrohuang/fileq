@@ -18,6 +18,8 @@ import com.macrohuang.fileq.concurrent.LockStatistics;
 import com.macrohuang.fileq.exception.CheckSumFailException;
 import com.macrohuang.fileq.exception.FileQueueIOException;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
+import com.macrohuang.fileq.conf.TimeConstants;
+import com.macrohuang.fileq.util.SleepUtil;
 
 /**
  * 增强的FileQueue实现
@@ -60,6 +62,10 @@ public class EnhancedFileQueueImpl<E> extends AbstractFileQueueImpl<E> implement
         });
     }
     
+    /**
+     * Internal method to add an element to the queue.
+     * Handles serialization, buffer management, and file rotation.
+     */
     private void addInternal(E e) throws Exception {
         checkNotClosed();
         if (e == null) {
@@ -68,35 +74,110 @@ public class EnhancedFileQueueImpl<E> extends AbstractFileQueueImpl<E> implement
         
         logger.debug("Adding element to queue");
         
-        byte[] objBytes = codec.encode(e);
-        byte[] metaBytes = new byte[Constants.DATA_META_SIZE];
-        Arrays.fill(metaBytes, Constants.PADDING);
-        System.arraycopy(Constants.LEADING_HEAD, 0, metaBytes, 0, 4);
-        System.arraycopy(NumberBytesConvertUtil.int2ByteArr(objBytes.length), 0, metaBytes, 4, 4);
+        // Prepare data for writing
+        QueueDataPacket dataPacket = prepareDataPacket(e);
         
-        byte[] checkSum = new byte[Constants.DATA_CHECKSUM_SIZE];
-        Arrays.fill(checkSum, Constants.PADDING);
-        System.arraycopy(NumberBytesConvertUtil.int2ByteArr(Constants.DATA_META_SIZE + objBytes.length), 0, checkSum, 0,
-                NumberBytesConvertUtil.int2ByteArr(Constants.DATA_META_SIZE + objBytes.length).length);
+        // Ensure buffer capacity and write data
+        ensureWriteBufferCapacity(dataPacket.getTotalSize());
+        writeDataPacket(dataPacket);
         
-        long size = metaBytes.length + objBytes.length + checkSum.length;
-        
-        // Check if current object exceeds the file size, expand it first
-        if (writeMappedByteBuffer.position() + size > writeMappedByteBuffer.capacity()) {
-            logger.debug("Expanding write buffer for size: {}", size);
-            writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), size);
-        }
-        
-        writeMappedByteBuffer.put(metaBytes);
-        writeMappedByteBuffer.put(objBytes);
-        writeMappedByteBuffer.put(checkSum);
-        
-        if (writePosition.addAndGet(size) >= getFileSize()) {
-            increateWriteNumber();
-        }
-        updateWriteMeta();
+        // Update queue state
+        updateQueueAfterWrite(dataPacket.getTotalSize());
         
         logger.debug("Successfully added element to queue, new size: {}", size());
+    }
+    
+    /**
+     * Prepares a complete data packet for writing to the queue.
+     * Includes serialization, metadata creation, and checksum generation.
+     */
+    private QueueDataPacket prepareDataPacket(E element) throws Exception {
+        // Serialize the object using configured codec
+        byte[] objBytes = codec.encode(element);
+        
+        // Create metadata header (16 bytes: magic number + object length + padding)
+        byte[] metaBytes = createMetadataHeader(objBytes.length);
+        
+        // Create checksum footer (16 bytes: total size + padding)
+        byte[] checkSum = createChecksumFooter(objBytes.length);
+        
+        return new QueueDataPacket(metaBytes, objBytes, checkSum);
+    }
+    
+    /**
+     * Creates the metadata header for a queue entry.
+     */
+    private byte[] createMetadataHeader(int objectLength) {
+        byte[] metaBytes = new byte[Constants.DATA_META_SIZE];
+        Arrays.fill(metaBytes, Constants.PADDING);  // Initialize with padding
+        System.arraycopy(Constants.LEADING_HEAD, 0, metaBytes, 0, 4);  // Magic number
+        System.arraycopy(NumberBytesConvertUtil.int2ByteArr(objectLength), 0, metaBytes, 4, 4);  // Object length
+        return metaBytes;
+    }
+    
+    /**
+     * Creates the checksum footer for integrity verification.
+     */
+    private byte[] createChecksumFooter(int objectLength) {
+        byte[] checkSum = new byte[Constants.DATA_CHECKSUM_SIZE];
+        Arrays.fill(checkSum, Constants.PADDING);
+        // Store total data size (meta + object) for integrity verification
+        byte[] sizeBytes = NumberBytesConvertUtil.int2ByteArr(Constants.DATA_META_SIZE + objectLength);
+        System.arraycopy(sizeBytes, 0, checkSum, 0, sizeBytes.length);
+        return checkSum;
+    }
+    
+    /**
+     * Ensures the write buffer has sufficient capacity for the data.
+     */
+    private void ensureWriteBufferCapacity(long requiredSize) throws IOException {
+        if (writeMappedByteBuffer.position() + requiredSize > writeMappedByteBuffer.capacity()) {
+            logger.debug("Expanding write buffer for size: {}", requiredSize);
+            // Remap with current position as starting point and required size
+            writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, writeMappedByteBuffer.position(), requiredSize);
+        }
+    }
+    
+    /**
+     * Writes the complete data packet to the buffer.
+     */
+    private void writeDataPacket(QueueDataPacket dataPacket) {
+        writeMappedByteBuffer.put(dataPacket.getMetaBytes());     // Write metadata header
+        writeMappedByteBuffer.put(dataPacket.getObjectBytes());   // Write serialized object
+        writeMappedByteBuffer.put(dataPacket.getChecksumBytes()); // Write checksum footer
+    }
+    
+    /**
+     * Updates queue metadata after a successful write operation.
+     */
+    private void updateQueueAfterWrite(long dataSize) throws IOException {
+        // Update position and check if file rotation is needed
+        if (writePosition.addAndGet(dataSize) >= getFileSize()) {
+            increateWriteNumber();  // Rotate to new file when size limit reached
+        }
+        updateWriteMeta();  // Update queue metadata (count, position)
+    }
+    
+    /**
+     * Data structure to hold a complete queue entry ready for writing.
+     */
+    private static class QueueDataPacket {
+        private final byte[] metaBytes;
+        private final byte[] objectBytes;
+        private final byte[] checksumBytes;
+        private final long totalSize;
+        
+        public QueueDataPacket(byte[] metaBytes, byte[] objectBytes, byte[] checksumBytes) {
+            this.metaBytes = metaBytes;
+            this.objectBytes = objectBytes;
+            this.checksumBytes = checksumBytes;
+            this.totalSize = metaBytes.length + objectBytes.length + checksumBytes.length;
+        }
+        
+        public byte[] getMetaBytes() { return metaBytes; }
+        public byte[] getObjectBytes() { return objectBytes; }
+        public byte[] getChecksumBytes() { return checksumBytes; }
+        public long getTotalSize() { return totalSize; }
     }
     
     @Override
@@ -135,32 +216,78 @@ public class EnhancedFileQueueImpl<E> extends AbstractFileQueueImpl<E> implement
         return obj;
     }
     
+    /**
+     * Validates the metadata header format and content.
+     * Checks magic number, object length, and padding bytes.
+     */
     private boolean checkMeta(ByteBuffer meta) {
+        // Ensure buffer is ready for reading from beginning
         if (meta.position() != 0)
             meta.flip();
-        boolean pass = (meta.getInt() == Constants.MAGIC_NUMBER && meta.getInt() > -1 && meta.get() == Constants.PADDING
-                && meta.get() == Constants.PADDING && meta.get() == Constants.PADDING && meta.get() == Constants.PADDING);
-        meta.flip();
+        
+        // Validate metadata structure:
+        // - First 4 bytes: magic number for format validation
+        // - Next 4 bytes: object length (must be non-negative)
+        // - Remaining 8 bytes: padding (should all be PADDING value)
+        boolean pass = (meta.getInt() == Constants.MAGIC_NUMBER && 
+                       meta.getInt() > -1 && 
+                       meta.get() == Constants.PADDING &&
+                       meta.get() == Constants.PADDING && 
+                       meta.get() == Constants.PADDING && 
+                       meta.get() == Constants.PADDING);
+        meta.flip();  // Reset for next read
         return pass;
     }
 
+    /**
+     * Retrieves a valid metadata buffer from the current read position.
+     * Handles retry logic and error recovery for corrupted metadata.
+     */
     private ByteBuffer getMetaBuffer(long timeout) throws IOException, InterruptedException {
         long position = readPosition.get();
-        ByteBuffer metaBuffer = ByteBuffer.allocate(Constants.DATA_META_SIZE);
+        ByteBuffer metaBuffer = readMetaBufferAtPosition(position);
         
+        // Try to read and validate metadata with retry logic
+        if (retryMetaRead(metaBuffer, position)) {
+            metaBuffer.getInt(); // Skip magic number
+            return metaBuffer;
+        }
+        
+        // Initial read failed, attempt recovery
+        metaBuffer = recoverFromFailedMeta(timeout);
+        if (metaBuffer != null) {
+            metaBuffer.getInt(); // Skip magic number
+        }
+        return metaBuffer;
+    }
+    
+    /**
+     * Reads metadata buffer at the specified position.
+     */
+    private ByteBuffer readMetaBufferAtPosition(long position) throws IOException {
+        ByteBuffer metaBuffer = ByteBuffer.allocate(Constants.DATA_META_SIZE);
         try {
             readChannel.read(metaBuffer, position);
+            return metaBuffer;
         } catch (IOException e) {
             logger.error("Failed to read meta buffer at position: {}", position, e);
             throw e;
         }
-        
+    }
+    
+    /**
+     * Attempts to read and validate metadata with retry logic.
+     * @return true if successful, false if max retries exceeded
+     */
+    private boolean retryMetaRead(ByteBuffer metaBuffer, long position) throws InterruptedException {
         int retry = 0;
-        // Data error, maybe the data hasn't flushed to the disk, try some time, if still error, then skip
+        
+        // Handle potential race condition: data may not be flushed to disk yet
         while (!checkMeta(metaBuffer) && retry < Constants.MAX_RETRY) {
-            Thread.sleep(10);
+            SleepUtil.adaptiveWait(retry);  // Adaptive wait with exponential backoff
             retry++;
             metaBuffer.clear();
+            
             try {
                 readChannel.read(metaBuffer, position);
             } catch (IOException e) {
@@ -169,63 +296,72 @@ public class EnhancedFileQueueImpl<E> extends AbstractFileQueueImpl<E> implement
         }
         
         if (retry >= Constants.MAX_RETRY) {
-            logger.warn("Meta validation failed after {} retries, skipping to next position", Constants.MAX_RETRY);
+            logger.warn("Meta validation failed after {} retries, will attempt recovery", Constants.MAX_RETRY);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Recovers from failed metadata read by advancing position and retrying.
+     */
+    private ByteBuffer recoverFromFailedMeta(long timeout) throws IOException, InterruptedException {
+        long position = readPosition.incrementAndGet();
+        logger.debug("Starting recovery from position: {}", position);
+        
+        while (true) {
+            // Wait for data to become available if we've caught up to write position
+            if (!waitForDataAvailable(position, timeout)) {
+                return null; // Timeout occurred
+            }
             
+            // Check if we need to rotate to next file
+            if (position >= readChannel.size()) {
+                logger.debug("Reached end of read channel, increasing read number");
+                increateReadNumber();
+                position = readPosition.get(); // Reset to beginning of new file
+            }
+            
+            // Try to read metadata at current position
+            ByteBuffer metaBuffer = readMetaBufferAtPosition(position);
+            
+            // Attempt validation with retry
+            if (retryMetaRead(metaBuffer, position)) {
+                logger.debug("Successfully recovered metadata at position: {}", position);
+                return metaBuffer;
+            }
+            
+            // Recovery failed at this position, try next
+            logger.warn("Recovery failed at position: {}, moving to next", position);
             position = readPosition.incrementAndGet();
-            boolean success = false;
-            
-            while (!success) {
-                if (position >= writePosition.get()) {
-                    if (timeout > 0) {
-                        Thread.sleep(timeout);
-                        if (position >= writePosition.get()) {
-                            logger.debug("Timeout waiting for data at position: {}", position);
-                            return null;
-                        }
-                    } else {
-                        while (position >= writePosition.get()) {
-                            Thread.sleep(100);
-                        }
-                    }
-                }
-                
-                if (position >= readChannel.size()) {
-                    logger.debug("Reached end of read channel, increasing read number");
-                    increateReadNumber();
-                }
-                
-                metaBuffer.clear();
-                try {
-                    readChannel.read(metaBuffer, position);
-                } catch (IOException e) {
-                    logger.error("Failed to read meta buffer during recovery at position: {}", position, e);
-                    throw e;
-                }
-                
-                retry = 0;
-                // Data error, maybe the data hasn't flushed to the disk, try some time, if still error, then skip
-                while (!checkMeta(metaBuffer) && retry < Constants.MAX_RETRY) {
-                    Thread.sleep(10);
-                    retry++;
-                    metaBuffer.clear();
-                    try {
-                        readChannel.read(metaBuffer, position);
-                    } catch (IOException e) {
-                        logger.warn("Recovery retry {} failed at position: {}", retry, position, e);
-                    }
-                }
-                
-                if (retry < Constants.MAX_RETRY) {
-                    success = true;
-                } else {
-                    logger.warn("Recovery failed at position: {}, moving to next", position);
-                    position = readPosition.incrementAndGet();
-                }
+        }
+    }
+    
+    /**
+     * Waits for data to become available at the specified position.
+     * @return true if data became available, false if timeout occurred
+     */
+    private boolean waitForDataAvailable(long position, long timeout) throws InterruptedException {
+        if (position < writePosition.get()) {
+            return true; // Data already available
+        }
+        
+        if (timeout > 0) {
+            // Wait with timeout
+            Thread.sleep(timeout);
+            if (position >= writePosition.get()) {
+                logger.debug("Timeout waiting for data at position: {}", position);
+                return false;
+            }
+        } else {
+            // Wait indefinitely
+            while (position >= writePosition.get()) {
+                SleepUtil.queueWait();
             }
         }
         
-        metaBuffer.getInt(); // Skip magic number
-        return metaBuffer;
+        return true;
     }
 
     @SuppressWarnings("unchecked")
@@ -246,7 +382,7 @@ public class EnhancedFileQueueImpl<E> extends AbstractFileQueueImpl<E> implement
                 if (i == Constants.MAX_RETRY - 1) {
                     logger.error("Failed to read object after {} retries", Constants.MAX_RETRY, e);
                 }
-                Thread.sleep(10);
+                SleepUtil.adaptiveWait(i + 1);
             }
             objBuffer.clear();
         }
@@ -269,7 +405,7 @@ public class EnhancedFileQueueImpl<E> extends AbstractFileQueueImpl<E> implement
                 logger.warn("Checksum mismatch, retry {}/{}", i + 1, Constants.MAX_RETRY);
             } catch (Exception e) {
                 logger.warn("Failed to read checksum, retry {}/{}: {}", i + 1, Constants.MAX_RETRY, e.getMessage());
-                Thread.sleep(10);
+                SleepUtil.adaptiveWait(i + 1);
             }
             checksumBuffer.clear();
         }

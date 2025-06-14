@@ -24,6 +24,8 @@ import com.macrohuang.fileq.exception.InsufficientSpaceException;
 import com.macrohuang.fileq.util.FileUtil;
 import com.macrohuang.fileq.util.NumberBytesConvertUtil;
 import com.macrohuang.fileq.util.ResourceManager;
+import com.macrohuang.fileq.conf.TimeConstants;
+import com.macrohuang.fileq.util.SleepUtil;
 
 public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	
@@ -83,59 +85,87 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		init();
 	}
 
+	/**
+	 * Initializes the FileQueue with proper error handling and resource cleanup.
+	 */
 	private void init() {
 		logger.info("Initializing FileQueue with base path: {}", config.getBasePath());
 		
 		try {
-			// 检查磁盘空间（仅在可以获取空间信息时进行检查）
-			long requiredSpace = config.getFileSize() * 2L; // 估算需要的空间
-			long availableSpace = ResourceManager.getAvailableDiskSpace(config.getBasePath());
-			if (availableSpace > 0 && availableSpace < requiredSpace) {
-				// 只有在能获取到有效空间信息且空间不足时才抛出异常
-				throw new InsufficientSpaceException(requiredSpace, availableSpace);
-			}
-			
-			if (config.isInit()) {
-				File basePath = new File(config.getBasePath());
-				FileUtil.delete(basePath);
-				logger.info("Cleaned up existing queue files at: {}", config.getBasePath());
-			}
+			performPreInitChecks();
+			handleCleanupIfRequested();
 			
 			boolean isNew = FileUtil.isMetaExists(config);
-			
-			// 初始化元数据文件
-			initMetaFile(isNew);
-			
-			// 初始化数据文件
-			initDataFiles();
+			initializeQueueComponents(isNew);
 			
 			logger.info("FileQueue initialized successfully. New queue: {}", isNew);
 			
 		} catch (IOException e) {
-			logger.error("Failed to initialize FileQueue at path: {}", config.getBasePath(), e);
-			// 清理已创建的资源
-			cleanup();
-			throw new FileQueueIOException("Failed to initialize FileQueue", e);
+			handleInitializationError("Failed to initialize FileQueue", e);
 		} catch (Exception e) {
-			logger.error("Unexpected error during FileQueue initialization", e);
-			cleanup();
-			throw new FileQueueIOException("Unexpected error during initialization", new IOException(e));
+			handleInitializationError("Unexpected error during initialization", new IOException(e));
 		}
+	}
+	
+	/**
+	 * Performs pre-initialization checks including disk space validation.
+	 */
+	private void performPreInitChecks() {
+		// Disk space pre-check: estimate 2x file size for safety (data + backup)
+		long requiredSpace = config.getFileSize() * 2L;
+		long availableSpace = ResourceManager.getAvailableDiskSpace(config.getBasePath());
+		if (availableSpace > 0 && availableSpace < requiredSpace) {
+			// Only throw if we can reliably determine insufficient space
+			throw new InsufficientSpaceException(requiredSpace, availableSpace);
+		}
+	}
+	
+	/**
+	 * Handles cleanup of existing files if clean initialization is requested.
+	 */
+	private void handleCleanupIfRequested() {
+		if (config.isInit()) {
+			File basePath = new File(config.getBasePath());
+			FileUtil.delete(basePath);  // Remove all existing queue files
+			logger.info("Cleaned up existing queue files at: {}", config.getBasePath());
+		}
+	}
+	
+	/**
+	 * Initializes the core queue components in proper order.
+	 */
+	private void initializeQueueComponents(boolean isNew) throws IOException {
+		// Phase 1: Initialize metadata file and queue state
+		initMetaFile(isNew);
+		
+		// Phase 2: Initialize data files and channels
+		initDataFiles();
+	}
+	
+	/**
+	 * Handles initialization errors with proper cleanup and exception wrapping.
+	 */
+	private void handleInitializationError(String message, IOException cause) {
+		logger.error("{} at path: {}", message, config.getBasePath(), cause);
+		cleanup();  // Clean up any partially created resources
+		throw new FileQueueIOException(message, cause);
 	}
 	
 	private void initMetaFile(boolean isNew) throws IOException {
 		try {
+			// Create or open the metadata file with read/write access
 			metaAccessFile = new RandomAccessFile(FileUtil.getMetaFile(config), "rw");
 			metaChannel = metaAccessFile.getChannel();
+			// Map the entire 46-byte metadata structure into memory for fast access
 			queueMetaBuffer = metaChannel.map(MapMode.READ_WRITE, 0, Constants.QUEUE_META_SIZE);
 			
 			if (!isNew && !config.isInit()) {
-				// 恢复现有队列状态
+				// Recovery path: restore queue state from existing metadata
 				loadQueueState();
 				logger.debug("Loaded existing queue state - writeNumber: {}, readNumber: {}, objectCount: {}", 
 						   writeNumber.get(), readNumber.get(), objectCount.get());
 			} else {
-				// 初始化新队列
+				// Fresh start: initialize new queue with default values
 				initializeNewQueue();
 				logger.debug("Initialized new queue state");
 			}
@@ -170,13 +200,15 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	
 	private void initDataFiles() throws IOException {
 		try {
-			// 初始化写文件
+			// Initialize write file and channel for queue additions
 			writeFile = new RandomAccessFile(FileUtil.getDataFile(config, writeNumber.get()), "rw");
 			writeChannel = writeFile.getChannel();
+			// Memory-map the entire file for high-performance writes
 			writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getFileSize());
+			// Position buffer at last write position for continuous writing
 			writeMappedByteBuffer.position(Long.valueOf(writePosition.get()).intValue());
 			
-			// 初始化读文件
+			// Initialize read file and channel for queue consumption (read-only)
 			readFile = new RandomAccessFile(FileUtil.getDataFile(config, readNumber.get()), "r");
 			readChannel = readFile.getChannel();
 			
@@ -244,7 +276,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 				Thread.sleep(TimeUnit.MILLISECONDS.convert(timeout, timeUnit));
 			} else {
 				while (objectCount.get() == 0 && !closed) {
-					Thread.sleep(100);
+					SleepUtil.queueWait();
 				}
 			}
 		}
@@ -268,7 +300,7 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	public E take() throws InterruptedException {
 		checkNotClosed();
 		while (objectCount.get() == 0 && !closed) {
-			Thread.sleep(100);
+			SleepUtil.queueWait();
 		}
 		if (closed) {
 			return null;
@@ -340,17 +372,20 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 		logger.debug("Increasing write number from {} to {}", writeNumber.get(), writeNumber.get() + 1);
 		
 		try {
+			// Step 1: Update metadata with new file number
 			queueMetaBuffer.putLong(MetaOffset.WriteNumber.offset, writeNumber.incrementAndGet());
 			
-			// 安全关闭当前写文件
+			// Step 2: Clean shutdown of current write file resources
 			ResourceManager.safeClose(writeChannel, "writeChannel");
 			ResourceManager.safeClose(writeFile, "writeFile");
 			
-			// 创建新的写文件
+			// Step 3: Create and initialize new write file
 			writeFile = new RandomAccessFile(FileUtil.getDataFile(config, writeNumber.get()), "rw");
 			writeChannel = writeFile.getChannel();
+			// Reset position to beginning of new file
 			writePosition.set(0L);
 			queueMetaBuffer.putLong(MetaOffset.WritePosition.offset, writePosition.get());
+			// Map new file into memory for fast access
 			writeMappedByteBuffer = writeChannel.map(MapMode.READ_WRITE, 0, config.getFileSize());
 			
 			logger.debug("Created new write file for number: {}", writeNumber.get());
@@ -391,23 +426,26 @@ public abstract class AbstractFileQueueImpl<E> implements FileQueue<E> {
 	protected void increateReadNumber() throws IOException {
 		logger.debug("Increasing read number from {} to {}", readNumber.get(), readNumber.get() + 1);
 		
+		// Step 1: Backup current file before deletion (if enabled)
 		boolean backup = backupDataFile();
 		File toDelFile = FileUtil.getDataFile(config, readNumber.get());
 		
 		try {
+			// Step 2: Update metadata with new read file number
 			queueMetaBuffer.putLong(MetaOffset.ReadNumber.offset, readNumber.incrementAndGet());
 			
-			// 安全关闭当前读文件
+			// Step 3: Clean shutdown of current read file resources
 			ResourceManager.safeClose(readChannel, "readChannel");
 			ResourceManager.safeClose(readFile, "readFile");
 			
-			// 创建新的读文件
+			// Step 4: Open next data file for reading
 			readFile = new RandomAccessFile(FileUtil.getDataFile(config, readNumber.get()), "r");
 			readChannel = readFile.getChannel();
+			// Reset read position to beginning of new file
 			readPosition.set(0L);
 			queueMetaBuffer.putLong(MetaOffset.ReadPosition.offset, readPosition.get());
 			
-			// 删除旧文件（如果备份成功）
+			// Step 5: Cleanup old file if backup was successful
 			if (backup && toDelFile.exists()) {
 				if (toDelFile.delete()) {
 					logger.debug("Deleted old data file: {}", toDelFile.getName());

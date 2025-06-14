@@ -49,6 +49,11 @@ public class MemoryConstants {
      */
     public static final long BYTES_PER_GB = 1024L * 1024 * 1024;
     
+    /**
+     * 扩展监控间隔时间（秒）
+     */
+    public static final long EXTENDED_MONITOR_INTERVAL_SECONDS = 60;
+    
     private MemoryConstants() {
         // 防止实例化
     }
