@@ -1,5 +1,25 @@
 # FileQ 项目 TODO 列表
 
+## 🔵 Google Standards Alignment (New)
+
+### 🔴 P0: Build & Safety Enhancements
+- [ ] **Add License File**: Create a `LICENSE` file with a standard open-source license (e.g., Apache 2.0).
+- [ ] **Enhance POM with Build Plugins**:
+    - [ ] Integrate `dependency-check-maven-plugin` for vulnerability scanning.
+    - [ ] Integrate `maven-checkstyle-plugin` with Google Style Guide.
+    - [ ] Integrate `spotbugs-maven-plugin` for static bug analysis.
+    - [ ] Integrate `jacoco-maven-plugin` for code coverage reporting.
+
+### 🟡 P1: Configuration & API Safety
+- [ ] **Refactor `Config` to be Immutable**: Redesign the `Config` class using the Builder pattern to ensure it's immutable after creation.
+- [ ] **Enforce Serializable in `FileQueue` API**: Change the generic signature from `<E>` to `<E extends java.io.Serializable>` to make the contract explicit.
+
+### 🟢 P2: Documentation & Clarity
+- [ ] **Clarify Performance Claims in README**: Align the "500,000 ops/s" claim with the benchmark data, providing context or revising the claim for accuracy.
+- [ ] **Improve `Config.init` Documentation**: Clarify the exact behavior of the `init` flag, renaming it if necessary (e.g., to `clearOnStart`).
+- [ ] **Add Project Metadata to POM**: Add `<url>`, `<licenses>`, `<scm>`, and `<developers>` sections to `pom.xml`.
+
+
 ## 🔴 高优先级（安全性和稳定性）
 
 -   [x] **升级项目到 Java 17**
@@ -122,3 +142,4 @@
 - [ ] 文档更新完成
 - [ ] 性能测试通过（如适用）
 - [ ] 安全扫描通过（如适用）
+- [ ] 提交Git Commit
